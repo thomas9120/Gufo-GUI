@@ -1,0 +1,32 @@
+<dialog id="preset-name-dialog" class="small-dialog" aria-labelledby="preset-name-title">
+  <form method="dialog">
+    <h2 id="preset-name-title" data-i18n="Save as a new preset">Save as a new preset</h2>
+    <label for="preset-name" data-i18n="Preset name">Preset name</label>
+    <input id="preset-name" type="text" maxlength="80" required autofocus>
+    <div class="dialog-footer actions">
+      <button value="save" class="primary" data-i18n="Save">Save</button>
+      <button value="cancel" formnovalidate data-i18n="Cancel">Cancel</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="unsaved-dialog" class="small-dialog" aria-labelledby="unsaved-title">
+  <form method="dialog">
+    <h2 id="unsaved-title" data-i18n="Unsaved changes">Unsaved changes</h2>
+    <p data-i18n="Save your changes before leaving this preset?">Save your changes before leaving this preset?</p>
+    <div class="dialog-footer actions">
+      <button value="cancel" autofocus data-i18n="Cancel">Cancel</button>
+      <button value="discard" data-i18n="Discard">Discard</button>
+      <button value="save" class="primary" data-i18n="Save">Save</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="delete-dialog" class="small-dialog" aria-labelledby="delete-title">
+  <form method="dialog">
+    <h2 id="delete-title" data-i18n="Delete preset?">Delete preset?</h2>
+    <p><span class="i18n-text" data-i18n="Delete">Delete</span> <strong id="delete-preset-name"></strong><span class="i18n-text" data-i18n="? Model files and the running server will stay as they are.">? Model files and the running server will stay as they are.</span></p>
+    <div class="dialog-footer actions">
+      <button value="cancel" autofocus data-i18n="Cancel">Cancel</button>
+      <button value="delete" class="stop" data-i18n="Delete">Delete</button>
+    </div>
+  </form>
+</dialog>

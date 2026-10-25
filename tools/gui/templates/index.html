@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/static/theme.js"></script>
+  <meta name="gufo-token" content="{{ token }}">
+  <title data-i18n="Gufo · Local launcher">Gufo · Local launcher</title>
+  <link rel="icon" href="/logo.jpg">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" type="module"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><img src="/logo.jpg" alt="Gufo owl" data-i18n-alt="Gufo owl"><span>gufo <small data-i18n="LOCAL LAUNCHER">LOCAL LAUNCHER</small></span></a>
+    <div class="topbar-actions">
+      <select id="language-select" aria-label="Language" data-i18n-aria-label="Language"><option value="en">English</option><option value="zh-CN">简体中文</option></select>
+      <button type="button" id="theme-toggle" class="quiet theme-toggle" aria-pressed="false" aria-label="Switch to the dark theme" data-i18n-aria-label="Switch to the dark theme">
+        <svg class="moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.3 15.6A8.9 8.9 0 0 1 8.4 3.7a8.9 8.9 0 1 0 11.9 11.9Z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.4"/><path d="M11 1.3a1 1 0 0 1 2 0v2.2a1 1 0 0 1-2 0Zm0 17a1 1 0 0 1 2 0v2.2a1 1 0 0 1-2 0ZM2.3 11a1 1 0 0 1 2.2 0v.1a1 1 0 0 1-2.2 0Zm17.2 0a1 1 0 0 1 2.2 0v.1a1 1 0 0 1-2.2 0ZM4.9 3.5a1 1 0 0 1 1.4 1.4l-1.5 1.5a1 1 0 0 1-1.4-1.4Zm13.3 13.3a1 1 0 0 1 1.4 1.4l-1.5 1.5a1 1 0 0 1-1.4-1.4ZM20.5 3.5a1 1 0 0 1 0 1.4l-1.5 1.5a1 1 0 1 1-1.4-1.4l1.5-1.5a1 1 0 0 1 1.4 0ZM7.2 16.8a1 1 0 0 1 0 1.4l-1.5 1.5a1 1 0 0 1-1.4-1.4l1.5-1.5a1 1 0 0 1 1.4 0Z"/></svg>
+      </button>
+      <button type="button" id="exit-button" class="quiet" data-i18n="Exit launcher">Exit launcher</button>
+    </div>
+  </header>
+  <main>
+    <div class="intro"><div><h1 data-i18n="Launch your model.">Launch your model.</h1>
+      <p data-i18n="Choose your files, tune the defaults, and start your local API.">Choose your files, tune the defaults, and start your local API.</p></div>
+      <span class="local-label" data-i18n="●   On this computer">●   On this computer</span>
+    </div>
+    <div id="notice" class="notice" role="alert" hidden></div>
+    <form id="settings-form">
+      {% include "presets.html" %}
+      <div class="columns">
+        <section class="card files-card" aria-labelledby="files-heading">
+          <div class="section-title"><span class="section-number">01</span><h2 id="files-heading" data-i18n="Model files">Model files</h2></div>
+          <label for="model_family" data-i18n="Model family">Model family</label>
+          <select id="model_family" name="model_family"></select>
+          <p id="family-hint" class="hint"></p>
+          <label for="models_dir" data-i18n="Models folder">Models folder</label>
+          <div class="path-row"><input id="models_dir" name="models_dir" type="text" spellcheck="false"><button type="button" data-browse="models_dir" data-kind="folder" data-i18n="Browse">Browse</button></div>
+          <p class="hint" data-i18n="Use your existing library. Files stay where they are.">Use your existing library. Files stay where they are.</p>
+          <label for="model"><span class="i18n-text" data-i18n="Main model">Main model</span> <span class="tag">GGUF</span></label>
+          <div class="path-row"><input id="model" name="model" type="text" spellcheck="false" placeholder="Choose a model or its first shard" data-i18n-placeholder="Choose a model or its first shard"><button type="button" data-browse="model" data-kind="gguf" aria-label="Choose main model" data-i18n="Choose" data-i18n-aria-label="Choose main model">Choose</button></div>
+          <p id="model-filename" class="selected-file"></p>
+          <div class="divider"></div>
+          <label for="speculative" data-i18n="Speculative decoding">Speculative decoding</label>
+          <select id="speculative" name="speculative"></select>
+          <div data-speculative-file="mtp_model" hidden><label for="mtp_model" data-i18n="MTP sidecar">MTP sidecar</label>
+            <div class="path-row"><input id="mtp_model" name="mtp_model" type="text" spellcheck="false" placeholder="Matching shared Q8_0 sidecar" data-i18n-placeholder="Matching shared Q8_0 sidecar"><button type="button" data-browse="mtp_model" data-kind="gguf" aria-label="Choose MTP sidecar" data-i18n="Choose" data-i18n-aria-label="Choose MTP sidecar">Choose</button></div>
+            <p id="mtp_model-filename" class="selected-file"></p>
+          </div>
+          <div data-speculative-file="dflash_model" hidden><label for="dflash_model" data-i18n="DFlash2 draft">DFlash2 draft</label>
+            <div class="path-row"><input id="dflash_model" name="dflash_model" type="text" spellcheck="false" placeholder="Matching Qwen3.8-27B DFlash2 draft" data-i18n-placeholder="Matching Qwen3.8-27B DFlash2 draft"><button type="button" data-browse="dflash_model" data-kind="gguf" aria-label="Choose DFlash2 draft" data-i18n="Choose" data-i18n-aria-label="Choose DFlash2 draft">Choose</button></div>
+            <p id="dflash_model-filename" class="selected-file"></p>
+            <p class="hint" data-i18n="Uses Gufo&#x27;s adaptive DFlash2 defaults.">Uses Gufo's adaptive DFlash2 defaults.</p>
+          </div>
+          <p class="hint" data-i18n="Choose the mode for your main model and a matching draft file. Flash-Next uses an MTP sidecar; Qwen3.8-27B uses DFlash2.">Choose the mode for your main model and a matching draft file. Flash-Next uses an MTP sidecar; Qwen3.8-27B uses DFlash2.</p>
+          <label for="mmproj"><span class="i18n-text" data-i18n="Vision projector">Vision projector</span> <span class="optional" data-i18n="optional">optional</span></label>
+          <div class="path-row"><input id="mmproj" name="mmproj" type="text" spellcheck="false" placeholder="Auto-detect" data-i18n-placeholder="Auto-detect"><button type="button" data-browse="mmproj" data-kind="gguf" aria-label="Choose vision projector" data-i18n="Choose" data-i18n-aria-label="Choose vision projector">Choose</button></div>
+          <p id="mmproj-filename" class="selected-file"></p>
+          <p class="hint" data-i18n="Leave blank for Gufo to auto-detect a compatible projector.">Leave blank for Gufo to auto-detect a compatible projector.</p>
+          <div class="divider"></div>
+          <label for="executable" data-i18n="Gufo executable">Gufo executable</label>
+          <div class="path-row"><input id="executable" name="executable" type="text" spellcheck="false" placeholder="…\build\release\gufo.exe"><button type="button" data-browse="executable" data-kind="executable" aria-label="Choose Gufo executable" data-i18n="Choose" data-i18n-aria-label="Choose Gufo executable">Choose</button></div>
+          <p class="hint" data-i18n="Select the built executable alongside its runtime libraries.">Select the built executable alongside its runtime libraries.</p>
+        </section>
+        <div class="right-column">
+          <section class="card" aria-labelledby="run-heading">
+            <div class="section-title"><span class="section-number">02</span><h2 id="run-heading" data-i18n="Run settings">Run settings</h2></div>
+            <div class="field-grid">
+              <div><label for="context" data-i18n="Context tokens">Context tokens</label><input id="context" name="context" type="number" min="0" max="4294967295" step="1" required><p class="hint" data-i18n="0 uses the model&#x27;s native context.">0 uses the model's native context.</p></div>
+              <div><label for="max_tokens" data-i18n="Max output tokens">Max output tokens</label><input id="max_tokens" name="max_tokens" type="number" min="-1" max="4294967295" step="1" required><p class="hint" data-i18n="-1 continues until EOS or context full.">-1 continues until EOS or context full.</p></div>
+              <div><label for="think" data-i18n="Thinking">Thinking</label><select id="think" name="think"><option value="on" data-i18n="On">On</option><option value="off" data-i18n="Off">Off</option><option value="auto" data-i18n="Model default">Model default</option></select></div>
+              <div><label for="reasoning_effort" data-i18n="Default thinking level">Default thinking level</label><select id="reasoning_effort" name="reasoning_effort" aria-describedby="thinking-hint"></select></div>
+              <div><label for="host" data-i18n="API bind address">API bind address</label><input id="host" name="host" type="text" placeholder="127.0.0.1" required><p class="hint" data-i18n="Use 127.0.0.1 for local access, 0.0.0.0 for all interfaces, or your local IPv4 address. Network clients use this PC's LAN address.">Use 127.0.0.1 for local access, 0.0.0.0 for all interfaces, or your local IPv4 address. Network clients use this PC's LAN address.</p></div>
+              <div><label for="port" data-i18n="API port">API port</label><input id="port" name="port" type="number" min="1" max="65535" step="1" required></div>
+              <div><label for="served_model_name" data-i18n="API model name">API model name</label><input id="served_model_name" name="served_model_name" type="text" required><p class="hint" data-i18n="Use this name in your chat client.">Use this name in your chat client.</p></div>
+              <div><label for="cache_ram_gib" data-i18n="RAM cache size (GiB)">RAM cache size (GiB)</label><input id="cache_ram_gib" name="cache_ram_gib" type="number" min="0" max="65536" step="1" required><p class="hint" data-i18n="0 sizes it automatically. Raise it if long chats keep reprocessing the whole prompt; Flash-Next at 262K needs about 16. Uses system RAM.">0 sizes it automatically. Raise it if long chats keep reprocessing the whole prompt; Flash-Next at 262K needs about 16. Uses system RAM.</p></div>
+            </div>
+            <p id="thinking-hint" class="hint" data-i18n="Auto uses the model default (Qwen: xhigh). Clients can override the level per request. The level is ignored while Thinking is Off.">Auto uses the model default (Qwen: xhigh). Clients can override the level per request. The level is ignored while Thinking is Off.</p>
+            <label class="check-label"><input id="preserve_thinking" name="preserve_thinking" type="checkbox"> <span class="i18n-text" data-i18n="Preserve reasoning in history">Preserve reasoning in history</span></label>
+            <p class="hint" data-i18n="On by default. Keeps reasoning supplied by your client in later prompts, helping cache reuse. Independent of generating new thoughts. Chat Completions clients can override this per request.">On by default. Keeps reasoning supplied by your client in later prompts, helping cache reuse. Independent of generating new thoughts. Chat Completions clients can override this per request.</p>
+          </section>
+          <section class="card" aria-labelledby="sampling-heading">
+            <div class="section-title"><span class="section-number">03</span><h2 id="sampling-heading" data-i18n="Sampling defaults">Sampling defaults</h2></div>
+            <div class="field-grid sampling-grid">
+              <div><label for="temperature" data-i18n="Temperature">Temperature</label><input id="temperature" name="temperature" type="number" min="0" max="2" step="any" required></div>
+              <div><label for="top_k">Top-k</label><input id="top_k" name="top_k" type="number" min="0" max="2147483647" step="1" required></div>
+              <div><label for="top_p">Top-p</label><input id="top_p" name="top_p" type="number" min="0.000001" max="1" step="any" required></div>
+              <div><label for="min_p">Min-p</label><input id="min_p" name="min_p" type="number" min="0" max="1" step="any" required></div>
+              <div><label for="seed" data-i18n="Seed">Seed</label><input id="seed" name="seed" type="number" min="-1" max="9007199254740991" step="1" required></div>
+            </div>
+            <p class="hint" data-i18n="Temperature 0 is greedy; seed -1 is random. Initial values suit Flash-Next with thinking. Clients may override these defaults.">Temperature 0 is greedy; seed -1 is random. Initial values suit Flash-Next with thinking. Clients may override these defaults.</p>
+            <button type="button" id="family-defaults" class="quiet" hidden data-i18n="Use family defaults">Use family defaults</button>
+          </section>
+        </div>
+      </div>
+      <details class="card advanced"><summary><span class="i18n-text" data-i18n="More options">More options</span> <span data-i18n="Disk cache, sessions, repetition penalties and MTP">Disk cache, sessions, repetition penalties and MTP</span></summary>
+        <label class="check-label"><input id="cache_disk" name="cache_disk" type="checkbox"> <span class="i18n-text" data-i18n="Enable disk continuation cache">Enable disk continuation cache</span></label>
+        <p class="hint" data-i18n="Off by default. Reuses compatible snapshots after an engine restart. RAM caching works independently. Stop and Exit do not wait for pending disk writes; already written snapshots remain reusable.">Off by default. Reuses compatible snapshots after an engine restart. RAM caching works independently. Stop and Exit do not wait for pending disk writes; already written snapshots remain reusable.</p>
+        <fieldset id="disk-cache-options"><legend data-i18n="Disk cache settings">Disk cache settings</legend>
+          <label for="cache_disk_dir" data-i18n="Cache folder">Cache folder</label>
+          <div class="path-row"><input id="cache_disk_dir" name="cache_disk_dir" type="text" spellcheck="false" required><button type="button" data-browse="cache_disk_dir" data-kind="folder" aria-label="Choose disk cache folder" data-i18n="Choose" data-i18n-aria-label="Choose disk cache folder">Choose</button></div>
+          <p class="hint" data-i18n="Gufo creates the folder on launch if needed. You can type a new folder path.">Gufo creates the folder on launch if needed. You can type a new folder path.</p>
+          <div class="field-grid">
+            <div><label for="cache_disk_gib" data-i18n="Disk limit (GiB)">Disk limit (GiB)</label><input id="cache_disk_gib" name="cache_disk_gib" type="number" min="1" max="65536" step="1" required></div>
+            <div><label for="cache_disk_staging_gib" data-i18n="RAM staging limit (GiB)">RAM staging limit (GiB)</label><input id="cache_disk_staging_gib" name="cache_disk_staging_gib" type="number" min="0" max="65536" step="1" required><p class="hint" data-i18n="0 lets the engine choose automatically; the limit depends on its version. Nothing is allocated upfront.">0 lets the engine choose automatically; the limit depends on its version. Nothing is allocated upfront.</p></div>
+          </div>
+          <p class="hint" data-i18n="Snapshots larger than either limit are skipped. For Flash-Next/MTP at 262K context, use 8 GiB staging if RAM permits; check the process log for required snapshot sizes.">Snapshots larger than either limit are skipped. For Flash-Next/MTP at 262K context, use 8 GiB staging if RAM permits; check the process log for required snapshot sizes.</p>
+        </fieldset>
+        <div class="field-grid advanced-grid">
+          <div><label for="sessions" data-i18n="Sessions">Sessions</label><input id="sessions" name="sessions" type="number" min="1" max="64" step="1" required><p class="hint" data-i18n="Each session reserves its own context memory.">Each session reserves its own context memory.</p></div>
+          <div><label for="repeat_penalty" data-i18n="Repetition penalty">Repetition penalty</label><input id="repeat_penalty" name="repeat_penalty" type="number" min="0.000001" max="100" step="any" required><p class="hint" data-i18n="1 disables the penalty.">1 disables the penalty.</p></div>
+          <div><label for="repeat_last_n" data-i18n="Repetition window">Repetition window</label><input id="repeat_last_n" name="repeat_last_n" type="number" min="0" max="4294967295" step="1" required></div>
+          <div><label for="frequency_penalty" data-i18n="Frequency penalty">Frequency penalty</label><input id="frequency_penalty" name="frequency_penalty" type="number" min="-2" max="2" step="any" required></div>
+          <div><label for="presence_penalty" data-i18n="Presence penalty">Presence penalty</label><input id="presence_penalty" name="presence_penalty" type="number" min="-2" max="2" step="any" required></div>
+        </div>
+        {% include "mtp-options.html" %}
+      </details>
+      <section class="launch-bar" aria-label="Launch controls" data-i18n-aria-label="Launch controls">
+        <div class="save-state"><span id="saved-state" data-i18n="Loading settings…">Loading settings…</span><small id="next-launch-note" data-i18n="Changes apply to the next launch.">Changes apply to the next launch.</small></div>
+        <div class="actions"><button type="button" id="stop-button" class="stop" disabled data-i18n="Stop">Stop</button><button type="submit" id="start-button" class="primary" disabled><span class="i18n-text" data-i18n="Start Gufo">Start Gufo</span> <span aria-hidden="true">↗</span></button></div>
+      </section>
+    </form>
+    <section class="card runtime" aria-labelledby="runtime-heading">
+      <div class="runtime-heading"><h2 id="runtime-heading" data-i18n="Server">Server</h2><span id="status" class="status stopped" role="status" data-i18n="Stopped">Stopped</span></div>
+      <p id="running-preset" class="hint"></p>
+      <div class="connection"><span data-i18n="API base URL">API base URL</span><code id="api-url">http://127.0.0.1:8080/v1</code><button type="button" id="copy-url" class="quiet" data-i18n="Copy">Copy</button><span id="active-model"></span></div>
+      <div class="connection"><span id="vision-chip" class="status" data-i18n="Vision: —">Vision: —</span></div>
+      {% include "runtime-identity.html" %}
+      <p class="hint" id="runtime-note" data-i18n="Start Gufo to connect your OpenAI-compatible client.">Start Gufo to connect your OpenAI-compatible client.</p>
+      <section class="performance" aria-labelledby="performance-heading">
+        <h3 id="performance-heading" data-i18n="Performance">Performance</h3>
+        <dl class="metrics-grid">
+          <div><dt><span class="i18n-text" data-i18n="Live prefill">Live prefill</span> <span>tok/s</span></dt><dd id="live-prefill-speed">—</dd></div>
+          <div><dt><span class="i18n-text" data-i18n="Live generation">Live generation</span> <span>tok/s</span></dt><dd id="live-generation-speed">—</dd></div>
+          <div><dt><span class="i18n-text" data-i18n="Last completed prefill">Last completed prefill</span> <span>tok/s</span></dt><dd id="prefill-speed">—</dd></div>
+          <div><dt><span class="i18n-text" data-i18n="Last completed generation">Last completed generation</span> <span>tok/s</span></dt><dd id="generation-speed">—</dd></div>
+          <div><dt><span class="i18n-text" data-i18n="Prompt tokens">Prompt tokens</span> <span data-i18n="total">total</span></dt><dd id="prompt-total">—</dd></div>
+          <div><dt><span class="i18n-text" data-i18n="Generated tokens">Generated tokens</span> <span data-i18n="total">total</span></dt><dd id="generated-total">—</dd></div>
+          <div><dt data-i18n="Processing requests">Processing requests</dt><dd id="requests-processing">—</dd></div>
+          <div><dt data-i18n="Queued requests">Queued requests</dt><dd id="requests-deferred">—</dd></div>
+        </dl>
+        <p class="hint" id="metrics-note" data-i18n="Start Gufo to see performance.">Start Gufo to see performance.</p>
+        <p class="hint" id="metrics-detail" data-i18n="Live prefill uses measured processing time; generation uses wall time between polls. Cached prompt tokens are excluded. Completed speeds retain the latest nonzero measurement.">Live prefill uses measured processing time; generation uses wall time between polls. Cached prompt tokens are excluded. Completed speeds retain the latest nonzero measurement.</p>
+      </section>
+      <details id="logs-details"><summary><span class="i18n-text" data-i18n="Process log">Process log</span> <span data-i18n="Last 300 lines">Last 300 lines</span></summary><pre id="logs">No process output yet.</pre></details>
+      <details><summary><span class="i18n-text" data-i18n="Command preview">Command preview</span> <span data-i18n="Next launch">Next launch</span></summary><pre id="command">Choose a model to get started.</pre></details>
+    </section>
+    <footer><span data-i18n="Gufo · Made for Strix Halo">Gufo · Made for Strix Halo</span><span id="settings-location"></span></footer>
+  </main>
+  {% include "preset-dialogs.html" %}
+  {% include "busy-dialog.html" %}
+  <dialog id="file-dialog" aria-labelledby="picker-title">
+    <div class="dialog-heading"><h2 id="picker-title" data-i18n="Choose a file">Choose a file</h2><button type="button" id="close-picker" class="quiet" aria-label="Close file picker" data-i18n-aria-label="Close file picker">✕</button></div>
+    <div id="picker-roots" class="roots"></div>
+    <div class="path-row"><button type="button" id="picker-up" aria-label="Parent folder" data-i18n-aria-label="Parent folder">↑</button><input id="picker-path" aria-label="Folder path" spellcheck="false" data-i18n-aria-label="Folder path"><button type="button" id="picker-go" data-i18n="Go">Go</button></div>
+    <input id="picker-filter" type="search" placeholder="Filter this folder…" aria-label="Filter files" data-i18n-placeholder="Filter this folder…" data-i18n-aria-label="Filter files">
+    <p id="picker-error" role="alert" class="picker-error"></p>
+    <div id="picker-entries" class="file-list"></div>
+    <div class="dialog-footer"><p class="hint" data-i18n="Split models appear once, using their first shard.">Split models appear once, using their first shard.</p><button type="button" id="select-folder" class="primary" hidden data-i18n="Use this folder">Use this folder</button></div>
+  </dialog>
+</body>
+</html>

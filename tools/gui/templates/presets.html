@@ -1,0 +1,19 @@
+<section class="card presets-card" aria-label="Launch presets" data-i18n-aria-label="Launch presets">
+  <div class="preset-selector">
+    <label for="preset-select" data-i18n="Launch preset">Launch preset</label>
+    <select id="preset-select" aria-describedby="preset-hint"></select>
+  </div>
+  <div class="actions preset-actions">
+    <button type="button" id="load-preset" data-i18n="Load preset">Load preset</button>
+    <button type="button" id="save-button" data-i18n="Save preset">Save preset</button>
+    <button type="button" id="save-as-preset" data-i18n="Save as…">Save as…</button>
+    <button type="button" id="rename-preset" class="quiet" data-i18n="Rename">Rename</button>
+    <button type="button" id="delete-preset" class="quiet" data-i18n="Delete">Delete</button>
+    <span class="actions-divider" aria-hidden="true"></span>
+    <button type="button" id="export-presets" class="quiet" data-i18n="Back up all…">Back up all…</button>
+    <button type="button" id="import-presets" class="quiet" data-i18n="Import…">Import…</button>
+    <input type="file" id="import-file" accept=".json,application/json" hidden>
+  </div>
+  <p id="loaded-preset" class="hint"></p>
+  <p id="preset-hint" class="hint" data-i18n="Choose a preset and click Load preset to apply its model files and launch options. Save, Rename, and Delete act on the loaded preset. The executable, models folder, API bind address, and API port are shared. Saving also saves those shared settings. Back up all downloads every saved preset as JSON without those shared settings; Import adds presets from such a file without changing existing ones.">Choose a preset and click Load preset to apply its model files and launch options. Save, Rename, and Delete act on the loaded preset. The executable, models folder, API bind address, and API port are shared. Saving also saves those shared settings. Back up all downloads every saved preset as JSON without those shared settings; Import adds presets from such a file without changing existing ones.</p>
+</section>

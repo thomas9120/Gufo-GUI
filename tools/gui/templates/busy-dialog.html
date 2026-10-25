@@ -1,0 +1,11 @@
+<dialog id="busy-dialog" class="small-dialog" aria-labelledby="busy-title" aria-describedby="busy-description">
+  <form method="dialog">
+    <h2 id="busy-title" data-i18n="Stop Gufo anyway?">Stop Gufo anyway?</h2>
+    <p id="busy-description"><span id="busy-processing"></span> <span id="busy-queued"></span></p>
+    <p data-i18n="Stopping Gufo interrupts these requests.">Stopping Gufo interrupts these requests.</p>
+    <div class="dialog-footer actions">
+      <button value="cancel" autofocus data-i18n="Cancel">Cancel</button>
+      <button id="busy-confirm" value="confirm" class="stop" data-i18n="Stop anyway">Stop anyway</button>
+    </div>
+  </form>
+</dialog>
