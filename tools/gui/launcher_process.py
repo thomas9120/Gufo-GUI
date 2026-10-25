@@ -50,7 +50,7 @@ def parse_metrics(text):
 
 
 def add_live_rates(metrics, previous, elapsed):
-    """Use paired engine time for prefill, retaining wall-time rates on older engines."""
+    """Measure live throughput between polls; engine timing totals lag until completion."""
     live = "requests_processing" in metrics and "requests_deferred" in metrics
     continuous = (live and previous is not None and elapsed > 0
                   and all(metrics[key] >= previous[key]
@@ -58,15 +58,6 @@ def add_live_rates(metrics, previous, elapsed):
     for total, rate in (("prompt_tokens_total", "live_prefill_tps"),
                         ("generated_tokens_total", "live_generation_tps")):
         metrics[rate] = (metrics[total] - previous[total]) / elapsed if continuous else None
-    if "prompt_seconds_total" in metrics:
-        metrics["live_prefill_tps"] = None
-        if continuous and "prompt_seconds_total" in previous:
-            prompt_seconds = metrics["prompt_seconds_total"] - previous["prompt_seconds_total"]
-            prompt_tokens = metrics["prompt_tokens_total"] - previous["prompt_tokens_total"]
-            if prompt_seconds > 0:
-                metrics["live_prefill_tps"] = prompt_tokens / prompt_seconds
-            elif prompt_seconds == 0 and prompt_tokens == 0:
-                metrics["live_prefill_tps"] = 0.0
     return metrics if live else None
 
 

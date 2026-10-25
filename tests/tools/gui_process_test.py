@@ -243,25 +243,27 @@ class ProcessTest(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 parse_metrics(text.replace("requests_processing 1", f"requests_processing {value}"))
 
-    def test_prefill_rate_uses_processing_time_and_handles_counter_transitions(self):
+    def test_prefill_rate_uses_wall_time_while_processing_time_lags(self):
         previous = {"prompt_tokens_total": 100, "prompt_seconds_total": 0.25,
                     "generated_tokens_total": 20, "requests_processing": 1, "requests_deferred": 0}
         for elapsed in (1, 10):
-            current = {**previous, "prompt_tokens_total": 1100, "prompt_seconds_total": 0.5,
+            current = {**previous, "prompt_tokens_total": 1100,
                        "generated_tokens_total": 40}
             self.assertIs(add_live_rates(current, previous, elapsed), current)
-            self.assertEqual(current["live_prefill_tps"], 4000)
+            self.assertEqual(current["live_prefill_tps"], 1000 / elapsed)
             self.assertEqual(current["live_generation_tps"], 20 / elapsed)
         idle = dict(previous)
         add_live_rates(idle, previous, 10)
         self.assertEqual(idle["live_prefill_tps"], 0)
+        # Upstream publishes processing time only when a request finishes.
+        completed = {**previous, "prompt_seconds_total": 0.5, "prefill_tps": 4000}
+        add_live_rates(completed, previous, 1)
+        self.assertEqual(completed["live_prefill_tps"], 0)
+        self.assertEqual(completed["prefill_tps"], 4000)
         for changes, baseline, elapsed in (
                 ({}, None, 1), ({}, previous, 0),
-                ({"prompt_seconds_total": 0.1}, previous, 1),
                 ({"prompt_tokens_total": 0}, previous, 1),
-                ({"generated_tokens_total": 0}, previous, 1),
-                ({"prompt_tokens_total": 200}, previous, 1),
-                ({}, {key: value for key, value in previous.items() if key != "prompt_seconds_total"}, 1)):
+                ({"generated_tokens_total": 0}, previous, 1)):
             with self.subTest(changes=changes, baseline=baseline, elapsed=elapsed):
                 current = {**previous, **changes}
                 add_live_rates(current, baseline, elapsed)

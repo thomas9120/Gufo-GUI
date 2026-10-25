@@ -44,6 +44,14 @@ also stops the engine on Windows through its job object. A selected model is
 not loaded until Start is clicked. Runtime identity, capabilities and metrics
 come from the running engine; unavailable observations appear as dashes.
 
+Live prefill and generation show token-counter changes divided by wall time
+between polls, across all requests and excluding cached prompt tokens. Counters
+advance after processing chunks return, so short prefills may fall between polls.
+The live cards show a dash while idle. Completed prefill and generation retain
+the engine's latest nonzero measured processing speeds. Upstream's cumulative
+prefill-time counter updates at request completion and cannot measure live
+processing speed while a request is still running.
+
 More options exposes sessions, penalties, continuation cache settings and MTP
 draft limits. Optional controls depend on engine support. Disk caching is off
 by default. Start checks filesystem paths, GGUF magic, split-file presence

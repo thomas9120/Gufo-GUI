@@ -27,7 +27,5 @@ export function renderMetrics(state) {
          disconnected: "Performance unavailable. Launcher disconnected." }[state.state] || "Start Gufo to see performance."));
   text($("metrics-detail"), metrics && !live
     ? "This executable reports totals after requests finish and includes cached prompt tokens. Completed speeds retain the latest nonzero measurement."
-    : Number.isFinite(metrics?.prompt_seconds_total)
-      ? "Live prefill uses measured processing time; generation uses wall time between polls. Cached prompt tokens are excluded. Completed speeds retain the latest nonzero measurement."
-      : "Live rates cover all requests between polls. Prompt totals and live prefill exclude cached tokens. Completed speeds retain the latest nonzero measurement.");
+    : "Live rates use wall time between polls and cover all requests. Prompt totals and live prefill exclude cached tokens. Completed speeds retain the latest nonzero measurement.");
 }
