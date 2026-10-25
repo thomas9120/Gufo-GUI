@@ -1,5 +1,6 @@
 """Local file selection and lightweight artifact checks."""
 
+import ctypes
 import os
 from pathlib import Path
 import re
@@ -56,7 +57,10 @@ def browse_directory(value, kind="gguf"):
     entries.sort(key=lambda entry: (not entry["directory"], entry["name"].casefold()))
     roots = [str(Path.home())]
     if os.name == "nt":
-        roots.extend(f"{letter}:\\" for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if Path(f"{letter}:\\").is_dir())
+        # A bitmask avoids touching each drive; probing a disconnected network
+        # drive can stall every folder change for seconds.
+        drives = ctypes.windll.kernel32.GetLogicalDrives()
+        roots.extend(f"{chr(65 + index)}:\\" for index in range(26) if drives >> index & 1)
     else:
         roots.append("/")
     return {"path": str(path), "parent": str(path.parent), "roots": roots, "entries": entries}

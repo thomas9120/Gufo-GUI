@@ -23,11 +23,18 @@ from presets import (change_preset, export_presets, find_preset, import_presets,
 from settings import ROOT, settings_path, validate_settings
 
 
+# A backup of 100 presets exceeds the small default request limit.
+IMPORT_MAX_BYTES = 1024 * 1024
+
+
 def create_app(config_path, manager, exit_event, ui_port=8090):
     app = Flask(__name__)
     app.config.update(MAX_CONTENT_LENGTH=32768, TRUSTED_HOSTS=["127.0.0.1", "localhost"])
     token = secrets.token_urlsafe(32)
     action_lock = threading.Lock()
+    # Pairs each snapshot with its launch record; Stop does not hold it, so
+    # status keeps reporting "stopping" while the engine releases GPU memory.
+    status_lock = threading.Lock()
     shutting_down = False
     running = None
     try:
@@ -74,7 +81,8 @@ def create_app(config_path, manager, exit_event, ui_port=8090):
 
     @app.get("/logo.jpg")
     def logo():
-        return send_file(ROOT / "assets/gufo-logo.jpg")
+        # A small copy: the 2048px source is 2.4 MB, and responses are not cached.
+        return send_file(ROOT / "assets/gufo-logo-192.jpg")
 
     @app.get("/api/settings")
     def settings():
@@ -100,8 +108,7 @@ def create_app(config_path, manager, exit_event, ui_port=8090):
     @app.post("/api/presets/import")
     def import_backup():
         nonlocal document, load_error
-        # A backup of 100 presets exceeds the small default request limit.
-        request.max_content_length = 1024 * 1024
+        request.max_content_length = IMPORT_MAX_BYTES
         with action_lock:
             added = import_presets(document, request.get_json())
             count = len(added["presets"]) - len(document["presets"])
@@ -121,7 +128,7 @@ def create_app(config_path, manager, exit_event, ui_port=8090):
 
     @app.get("/api/status")
     def status():
-        with action_lock:
+        with status_lock:
             return jsonify(manager.snapshot() | {"running": running})
 
     @app.post("/api/start")
@@ -138,10 +145,12 @@ def create_app(config_path, manager, exit_event, ui_port=8090):
             if values["port"] == ui_port:
                 raise ValueError("The Gufo API and launcher need different ports (defaults: 8080 and 8090).")
             command = build_command(values, check_files=True)
-            state = manager.start(command, values["port"], values["served_model_name"], host=values["host"])
-            running = {"preset_id": preset["id"], "preset_name": preset["name"],
-                       "modified": values != resolved_settings(document, preset["id"]),
-                       "settings": values}
+            launch = {"preset_id": preset["id"], "preset_name": preset["name"],
+                      "modified": values != resolved_settings(document, preset["id"]),
+                      "settings": values}
+            with status_lock:
+                state = manager.start(command, values["port"], values["served_model_name"], host=values["host"])
+                running = launch
             return jsonify(state | {"running": running})
 
     @app.post("/api/stop")
@@ -164,9 +173,14 @@ def create_app(config_path, manager, exit_event, ui_port=8090):
     return app
 
 
-def main():
+def create_http_server(app, port):
     from waitress import create_server
 
+    return create_server(app, host="127.0.0.1", port=port, threads=4,
+                         max_request_body_size=IMPORT_MAX_BYTES, clear_untrusted_proxy_headers=True)
+
+
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8090, help="Launcher port (Gufo defaults to 8080)")
     parser.add_argument("--config", type=Path, default=settings_path(), help="Saved launcher settings file")
@@ -177,8 +191,7 @@ def main():
     manager, exiting = ProcessManager(), threading.Event()
     app = create_app(args.config, manager, exiting, args.port)
     try:
-        server = create_server(app, host="127.0.0.1", port=args.port, threads=4,
-                               max_request_body_size=32768, clear_untrusted_proxy_headers=True)
+        server = create_http_server(app, args.port)
     except OSError as exc:
         parser.exit(1, f"Cannot open launcher port {args.port}: {exc}\n")
     signal.signal(signal.SIGINT, lambda *_: exiting.set())

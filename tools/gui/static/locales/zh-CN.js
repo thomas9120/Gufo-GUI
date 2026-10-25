@@ -112,6 +112,7 @@ export const messages = {
   "Disconnected": "连接中断",
   "API base URL": "API 基础地址",
   "Copy": "复制",
+  "Copied": "已复制",
   "Start Gufo to connect your OpenAI-compatible client.": "启动 Gufo 后，即可连接兼容 OpenAI API 的客户端。",
   "Performance": "性能监控",
   "Live prefill": "实时预填充速度",

@@ -21,7 +21,7 @@ export function createRuntime(onChange) {
       { state: title, seconds: state.elapsed_seconds });
     $("status").className = `status ${state.state}`;
     const host = $("host").value.trim() || "127.0.0.1";
-    $("api-url").textContent = state.base_url || `http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${$("port").value || 8080}/v1`;
+    rawText($("api-url"), state.base_url || `http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${$("port").value || 8080}/v1`);
     text($("active-model"), state.model_name ? "Model: {name}" : "", { name: state.model_name });
     text($("runtime-note"), state.error || ({
       stopped: "Start Gufo to connect your OpenAI-compatible client.",

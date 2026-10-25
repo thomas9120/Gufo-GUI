@@ -1,4 +1,4 @@
-import { text, locale } from "./i18n.js";
+import { text, rawText, locale } from "./i18n.js";
 import { $ } from "./api.js";
 
 export function renderMetrics(state) {
@@ -11,8 +11,8 @@ export function renderMetrics(state) {
     ["requests-processing", "requests_processing", 0], ["requests-deferred", "requests_deferred", 0],
   ]) {
     const value = idle && key.startsWith("live_") ? null : metrics?.[key];
-    $(id).textContent = Number.isFinite(value) && (!nonzero || value > 0)
-      ? value.toLocaleString(locale(), { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : "—";
+    rawText($(id), Number.isFinite(value) && (!nonzero || value > 0)
+      ? value.toLocaleString(locale(), { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : "—");
   }
   const live = Number.isFinite(metrics?.requests_processing) && Number.isFinite(metrics?.requests_deferred);
   text($("metrics-note"), state.state === "ready"

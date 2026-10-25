@@ -39,17 +39,24 @@ export function t(key, values = {}) {
   });
 }
 
+// Status polling rerenders every second; rewriting unchanged text would clear
+// the user's selection and re-announce live regions.
+function setContent(element, value) {
+  if (element.childElementCount || element.textContent !== value) element.textContent = value;
+}
+
 export function text(element, key, values = {}) {
-  element.dataset.i18n = key;
-  element.dataset.i18nValues = JSON.stringify(values);
-  element.textContent = t(key, values);
+  const serialized = JSON.stringify(values);
+  if (element.dataset.i18n !== key) element.dataset.i18n = key;
+  if (element.dataset.i18nValues !== serialized) element.dataset.i18nValues = serialized;
+  setContent(element, t(key, values));
   return element;
 }
 
 export function rawText(element, value) {
   delete element.dataset.i18n;
   delete element.dataset.i18nValues;
-  element.textContent = value;
+  setContent(element, value);
 }
 
 export function option(label, value) { return text(new Option(label, value), label); }

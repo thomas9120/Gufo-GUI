@@ -9,7 +9,7 @@ import { confirmBusyAction } from "./busy-actions.js";
 initLanguage();
 
 let form, presets, busy = false, closed = false;
-let previewTimer, previewVersion = 0;
+let previewTimer, previewVersion = 0, copiedTimer;
 const runtime = createRuntime(updateControls);
 
 function updateControls() {
@@ -44,10 +44,18 @@ function edited() {
 
 async function action(callback) {
   if (busy || closed) return;
+  // The form is inert while busy, which drops focus from its buttons and
+  // from dialogs that return focus to them.
+  const focused = document.activeElement;
   busy = true; updateControls(); notice("");
   try { return await callback(); }
   catch (error) { notice(error.message, false, error.i18nValues); }
-  finally { busy = false; updateControls(); }
+  finally {
+    busy = false; updateControls();
+    if ((!document.activeElement || document.activeElement === document.body) && focused?.isConnected) {
+      focused.focus({ preventScroll: true });
+    }
+  }
 }
 
 $("settings-form").addEventListener("submit", (event) => {
@@ -67,6 +75,10 @@ $("exit-button").addEventListener("click", () => action(async () => {
 $("copy-url").addEventListener("click", () => action(async () => {
   await navigator.clipboard.writeText($("api-url").textContent);
   notice("API address copied.", true);
+  // The notice is at the top of the page, usually out of view from here.
+  text($("copy-url"), "Copied");
+  clearTimeout(copiedTimer);
+  copiedTimer = setTimeout(() => text($("copy-url"), "Copy"), 1500);
 }));
 window.addEventListener("beforeunload", (event) => {
   if (!closed && presets?.dirty()) { event.preventDefault(); event.returnValue = ""; }

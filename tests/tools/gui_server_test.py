@@ -1,5 +1,6 @@
 """Local control routes enforce origin/token checks and validate launches."""
 
+import json
 from pathlib import Path
 import re
 import sys
@@ -7,12 +8,14 @@ import tempfile
 import threading
 import unittest
 from unittest.mock import Mock, patch
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools/gui"))
 from settings import DEFAULTS
 from launcher_process import ProcessManager
 from presets import load_document
-from server import create_app
+from server import create_app, create_http_server
 
 
 class ServerTest(unittest.TestCase):
@@ -154,6 +157,22 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(self.client.post("/api/exit", headers=self.headers).status_code, 200)
         self.assertTrue(self.exiting.wait(1))
 
+    def test_status_reports_stopping_while_stop_waits_for_the_engine(self):
+        release = threading.Event()
+        self.manager.stop.side_effect = lambda: release.wait(5) and {"state": "stopped"}
+        stopping = threading.Thread(target=self.client.post, args=("/api/stop",), kwargs={"headers": self.headers})
+        stopping.start()
+        self.addCleanup(stopping.join)
+        self.addCleanup(release.set)
+        self.manager.snapshot.return_value = {"state": "stopping"}
+        result = {}
+        poll = threading.Thread(target=lambda: result.update(
+            response=self.app.test_client().get("/api/status", headers=self.headers)))
+        poll.start()
+        poll.join(2)
+        self.assertFalse(poll.is_alive(), "Status waited for Stop to finish")
+        self.assertEqual(result["response"].json["state"], "stopping")
+
     def test_preset_edits_do_not_change_running_snapshot(self):
         exe, model = self.root / "gufo.exe", self.root / "main.gguf"
         exe.touch()
@@ -199,6 +218,21 @@ class ServerTest(unittest.TestCase):
         self.assertIn("not a Gufo preset backup", rejected.json["error"])
         for method, path in (("get", "/api/presets/export"), ("post", "/api/presets/import")):
             self.assertEqual(getattr(self.client, method)(path).status_code, 403)
+
+    def test_http_server_accepts_import_sized_bodies(self):
+        # The test client bypasses waitress, whose own limit must admit large backups.
+        server = create_http_server(self.app, 0)
+        self.addCleanup(server.close)
+        threading.Thread(target=server.run, daemon=True).start()
+        self.addCleanup(server.task_dispatcher.shutdown)
+        body = json.dumps({"revision": 0, "data": {"padding": "x" * 100000}}).encode()
+        request = urllib.request.Request(f"http://127.0.0.1:{server.effective_port}/api/presets/import",
+                                         data=body, headers=self.headers | {"Content-Type": "application/json"})
+        with self.assertRaises(urllib.error.HTTPError) as rejected:
+            urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=5)
+        with rejected.exception:
+            self.assertEqual(rejected.exception.code, 400)
+            self.assertIn("not a Gufo preset backup", json.loads(rejected.exception.read())["error"])
 
 
 if __name__ == "__main__":

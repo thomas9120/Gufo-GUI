@@ -19,7 +19,7 @@ export function createPresets(initial, form, action, onChange) {
       $("preset-select").replaceChildren(...document.presets.map((preset) => new Option(preset.name, preset.id)));
       renderedRevision = document.revision;
     }
-    $("preset-select").value = pendingId;
+    if ($("preset-select").value !== pendingId) $("preset-select").value = pendingId;
     text($("loaded-preset"), "Loaded preset: {name}", { name: selected().name });
     $("delete-preset").disabled = document.presets.length === 1;
     text($("saved-state"), dirty() ? "Unsaved changes" : hasSaved ? "Preset saved" : "Not saved yet");
