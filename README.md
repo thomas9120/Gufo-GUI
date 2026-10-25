@@ -7,6 +7,8 @@ Adapted from the GUI and Windows setup scripts in [thomas9120/gufo-windows](http
 The launcher manages one text inference server, with model selection, named presets,
 sampling and reasoning controls, speculative decoding, live status, and Start/Stop/Exit.
 
+Simplified Chinese language support by @jerrydong1988
+
 ## Getting started
 
 This setup targets **Windows 11 x64 on AMD Strix Halo / gfx1151**. Install the AMD
