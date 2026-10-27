@@ -1,6 +1,5 @@
 # Gufo GUI for Windows and Linux
 
-Beta - Linux support is new; see [Linux (beta)](#linux-beta).
 
 A standalone browser launcher for the official [Gufo inference engine](https://github.com/gufo-org/gufo).
 Adapted from the GUI and Windows setup scripts in [thomas9120/gufo-windows](https://github.com/thomas9120/gufo-windows).
@@ -20,7 +19,7 @@ GitHub provides the source ZIP and tar.gz downloads automatically.
 
 ## Getting started
 
-This setup targets **Windows 11 x64 on AMD Strix Halo / gfx1151**. Install the AMD
+This setup targets **Windows 11 x64 and Linux on AMD Strix Halo / gfx1151**. Install the AMD
 graphics driver first. Models are downloaded separately; keep enough disk and GPU
 memory for your model and context size.
 
