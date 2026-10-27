@@ -19,9 +19,14 @@ GitHub provides the source ZIP and tar.gz downloads automatically.
 
 ## Getting started
 
+Follow the [Windows instructions](#windows) below or jump to the
+[Linux instructions](#linux) for setup, launching, and updating.
+
 This setup targets **Windows 11 x64 and Linux on AMD Strix Halo / gfx1151**. Install the AMD
 graphics driver first. Models are downloaded separately; keep enough disk and GPU
 memory for your model and context size.
+
+### Windows
 
 1. Download or clone this repository into a writable folder.
 2. Double-click **setup-windows.bat**. Review its plan and accept to install missing
@@ -52,11 +57,16 @@ Gufo-GUI/
   launch-gui.bat
   setup-windows.bat
   update-windows.bat
+  launch-gui.sh
+  setup-linux.sh
+  update-linux.sh
   tools/gui/                         GUI code and assets
   gufo/                              official Gufo source (created by setup)
     build/windows-release/gufo.exe   engine and staged runtime libraries
+    build/release/gufo              Linux engine
   build/gui-env/                     isolated Python environment
   build/windows-setup.json           saved tool and engine paths
+  build/linux-setup.json             saved Linux tool and engine paths
   build/setup-*.log                  setup logs
 ```
 
@@ -79,6 +89,9 @@ from the Windows port, select the new official `gufo.exe` and save each preset
 you want to migrate. Back up presets using the GUI's Export function.
 
 ## Updating
+
+On Linux, follow [Updating on Linux](#updating-on-linux). The Windows engine
+update steps are below; the GUI update instructions apply to both platforms.
 
 Stop the engine, then run **update-windows.bat**. It fast-forwards the separate
 official checkout from `gufo-org/gufo` `main`, reapplies upstream's idempotent SDK
@@ -109,7 +122,7 @@ It does not change your AMD driver or graphics memory allocation.
 Dependencies installed by setup are kept under `%LOCALAPPDATA%\Gufo\dependencies`.
 For GUI controls and development checks, see [tools/gui/README.md](tools/gui/README.md).
 
-## Linux (beta)
+## Linux
 
 The Linux scripts mirror the Windows ones and target **x86-64 Linux on AMD Strix
 Halo / gfx1151**. Install ROCm first using
@@ -118,27 +131,82 @@ Halo / gfx1151**. Install ROCm first using
 rocPRIM and rocWMMA development packages. Add your user to the `render` and
 `video` groups, then log out and back in.
 
-```sh
-./setup-linux.sh     # plan, install build tools, clone, build, verify GPU, open the GUI
-./launch-gui.sh      # later runs
-./update-linux.sh    # fast-forward official main and rebuild
-```
+### First-time setup on Linux
+
+1. Download and extract the repository's source ZIP, or clone this repository,
+   into a writable folder.
+2. Open a terminal in the `Gufo-GUI` folder and run:
+
+   ```sh
+   bash setup-linux.sh
+   ```
+
+3. Review the setup plan and accept it. Setup installs missing build tools,
+   clones the official `gufo-org/gufo` `main` branch, builds the engine, verifies
+   GPU startup, and prepares the GUI's Python environment. The first build can
+   take a while. Setup opens the GUI when it completes.
+4. In the GUI, select your GGUF model and any optional projector or draft model,
+   save a preset, and click **Start Gufo**. Connect your client to
+   `http://127.0.0.1:8080/v1` with model name `gufo` by default.
 
 Setup reviews the plan before changing anything. With apt, dnf or pacman it offers
 to install missing build tools and libraries through `sudo`; it does not install
 ROCm or change GPU drivers. It builds upstream's `release` preset, so the engine
 is `gufo/build/release/gufo`. The chosen folders and tools are saved in
 `build/linux-setup.json`, and presets are saved in `~/.config/Gufo/launcher.json`.
-Closing the terminal stops the launcher and its engine.
+Setup logs are written to `build/setup-*.log`. If setup fails, read the error,
+fix the missing prerequisite, and rerun the same command.
+
+The commands here use `bash` so they also work when a downloaded ZIP has not
+preserved executable permissions. Run them from the repository folder.
+
+### Launching on Linux
+
+On later runs, open a terminal in the repository folder and run:
 
 ```sh
-./setup-linux.sh --check-only                  # show plan without installing
-./setup-linux.sh --yes --no-launch --jobs 8
-./setup-linux.sh --gufo-path ~/AI/gufo --rocm /opt/rocm
-./update-linux.sh --jobs 8
-./launch-gui.sh --port 8091 --no-browser
-./launch-gui.sh --config ~/AI/launcher.json
+bash launch-gui.sh
 ```
 
-Update has the same safety checks as on Windows: it stops on local changes,
-another branch or divergent history in the engine checkout.
+The GUI opens at `http://127.0.0.1:8090`. Opening it does not load a model;
+select a preset and click **Start Gufo** when ready. Keep the terminal open.
+**Stop** unloads the engine; **Exit** closes the launcher and its engine.
+Closing the terminal also stops both.
+
+To use an engine you have already built, install 64-bit Python 3.10+ with venv
+support, run the launcher, and select your `gufo` executable in the GUI. The
+launcher creates `build/gui-env` and installs its Python dependencies on first
+use. On Debian/Ubuntu, install `python3-venv` if environment creation fails.
+
+### Updating on Linux
+
+Stop the engine in the GUI, then run:
+
+```sh
+bash update-linux.sh
+```
+
+The updater fast-forwards the separate official engine checkout from `main`,
+rebuilds it with the `release` preset, and verifies GPU startup. It reuses the
+paths saved by setup and preserves your presets. Local changes, untracked files,
+another branch, or divergent history in the engine checkout stop the update;
+resolve them before retrying. If a build fails after pulling, the source update
+is retained; fix the error and rerun the updater.
+
+After updating, run `bash launch-gui.sh` again. To update the GUI itself, pull
+this repository or replace it with a newer source download, preserving the
+`gufo` and `build` folders. The launcher refreshes its Python dependencies when
+`requirements.txt` changes.
+
+### Linux options
+
+```sh
+bash setup-linux.sh --check-only                  # show plan without installing
+bash setup-linux.sh --yes --no-launch --jobs 8
+bash setup-linux.sh --gufo-path ~/AI/gufo --rocm /opt/rocm
+bash update-linux.sh --jobs 8
+bash launch-gui.sh --port 8091 --no-browser
+bash launch-gui.sh --config ~/AI/launcher.json
+```
+
+Use `--help` with any of the three scripts to see its available options.
