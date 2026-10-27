@@ -61,7 +61,8 @@ The command preview shows the native argument list. Logs retain 300 lines.
 ## Development
 
 The launcher requires 64-bit Python 3.10+ and the packages in requirements.txt.
-`tools/windows/gui.ps1 -PrepareOnly` creates the isolated `build/gui-env`.
+`tools/windows/gui.ps1 -PrepareOnly` (or `tools/linux/gui.sh --prepare-only` on
+Linux) creates the isolated `build/gui-env`.
 To run directly, install the requirements in your environment and use
 `python tools/gui/server.py`. The backend also supports POSIX paths.
 
@@ -73,8 +74,9 @@ node --experimental-vm-modules --test tests/tools/gui_dom_test.mjs tests/tools/g
 
 The Python tests cover persistence, command validation, filesystem selection,
 real child processes, local HTTP controls, default executable discovery and
-the Windows source/build scripts. Windows script tests use temporary checkouts
-and simulated builds; they do not install prerequisites or load models.
+the Windows and Linux source/build scripts. Script tests run on their own
+platform with temporary checkouts and simulated builds; they do not install
+prerequisites or load models.
 DOM tests use Flask-rendered templates. Set `GUI_TEST_PYTHON` if the test Python
 is outside `build/gui-env`. DOM tests verify interactions, not browser layout.
 

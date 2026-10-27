@@ -89,6 +89,9 @@ class ProcessTest(unittest.TestCase):
                 self.assertIsNotNone(self.manager.snapshot()["metrics"])
                 self.manager.stop()
                 with socket.socket() as listener:
+                    if os.name != "nt":
+                        # Closed probe connections leave TIME_WAIT, which blocks a plain POSIX bind.
+                        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     listener.bind((host, port))
                     listener.listen()
                     with self.assertRaisesRegex(ValueError, "already in use"):
