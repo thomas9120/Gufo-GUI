@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: calver-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TARGET: ${{ github.sha }}
+    steps:
+      - name: Create CalVer release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # UTC month; existing tags reserve their counters even if a release was deleted.
+          prefix="Gufo-GUI-$(date -u +%Y.%m)."
+          tags=$(gh api "repos/${GH_REPO}/tags?per_page=100" --paginate --jq '.[].name')
+          counter=0
+          while IFS= read -r tag; do
+            if [[ "$tag" == "$prefix"* ]]; then
+              suffix="${tag#"$prefix"}"
+              if [[ "$suffix" =~ ^[0-9]{2,}$ ]]; then
+                number=$((10#$suffix))
+                if (( number > counter )); then
+                  counter=$number
+                fi
+              fi
+            fi
+          done <<< "$tags"
+
+          printf -v tag '%s%02d' "$prefix" "$((counter + 1))"
+          gh release create "$tag" \
+            --target "$RELEASE_TARGET" \
+            --title "$tag" \
+            --generate-notes
+
+          echo "### Released $tag" >> "$GITHUB_STEP_SUMMARY"
