@@ -17,17 +17,21 @@ def default_executable():
     """Find the official checkout without changing any saved preset selection."""
     name = "gufo.exe" if os.name == "nt" else "gufo"
     source = ROOT / "gufo"
-    try:
-        state = json.loads((ROOT / "build" / "windows-setup.json").read_text(encoding="utf-8-sig"))
+    # Each platform's setup records its checkout; prefer this platform's record.
+    states = ("windows-setup.json",) if os.name == "nt" else ("linux-setup.json", "windows-setup.json")
+    for state_name in states:
+        try:
+            state = json.loads((ROOT / "build" / state_name).read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            continue
         if isinstance(state, dict) and isinstance(state.get("GufoPath"), str) and Path(state["GufoPath"]).is_absolute():
             source = Path(state["GufoPath"])
-    except (OSError, ValueError):
-        pass
+            break
     for preset in ("windows-release", "release", "gpu-test", "cpu-test"):
         candidate = source / "build" / preset / name
         if candidate.is_file():
             return str(candidate)
-    return str(source / "build" / "windows-release" / name)
+    return str(source / "build" / ("windows-release" if os.name == "nt" else "release") / name)
 
 
 DEFAULTS = {

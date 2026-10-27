@@ -1,6 +1,6 @@
-# Gufo GUI for Windows
+# Gufo GUI for Windows and Linux
 
-Beta - support for Linux will come later. 
+Beta - Linux support is new; see [Linux (beta)](#linux-beta).
 
 A standalone browser launcher for the official [Gufo inference engine](https://github.com/gufo-org/gufo).
 Adapted from the GUI and Windows setup scripts in [thomas9120/gufo-windows](https://github.com/thomas9120/gufo-windows).
@@ -100,3 +100,37 @@ Setup can request Windows elevation and license acceptance for missing tools.
 It does not change your AMD driver or graphics memory allocation.
 Dependencies installed by setup are kept under `%LOCALAPPDATA%\Gufo\dependencies`.
 For GUI controls and development checks, see [tools/gui/README.md](tools/gui/README.md).
+
+## Linux (beta)
+
+The Linux scripts mirror the Windows ones and target **x86-64 Linux on AMD Strix
+Halo / gfx1151**. Install ROCm first using
+[AMD's Linux instructions](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/)
+(upstream qualifies ROCm 7.2.3), including the hipBLAS, hipBLASLt, rocBLAS, hipCUB,
+rocPRIM and rocWMMA development packages. Add your user to the `render` and
+`video` groups, then log out and back in.
+
+```sh
+./setup-linux.sh     # plan, install build tools, clone, build, verify GPU, open the GUI
+./launch-gui.sh      # later runs
+./update-linux.sh    # fast-forward official main and rebuild
+```
+
+Setup reviews the plan before changing anything. With apt, dnf or pacman it offers
+to install missing build tools and libraries through `sudo`; it does not install
+ROCm or change GPU drivers. It builds upstream's `release` preset, so the engine
+is `gufo/build/release/gufo`. The chosen folders and tools are saved in
+`build/linux-setup.json`, and presets are saved in `~/.config/Gufo/launcher.json`.
+Closing the terminal stops the launcher and its engine.
+
+```sh
+./setup-linux.sh --check-only                  # show plan without installing
+./setup-linux.sh --yes --no-launch --jobs 8
+./setup-linux.sh --gufo-path ~/AI/gufo --rocm /opt/rocm
+./update-linux.sh --jobs 8
+./launch-gui.sh --port 8091 --no-browser
+./launch-gui.sh --config ~/AI/launcher.json
+```
+
+Update has the same safety checks as on Windows: it stops on local changes,
+another branch or divergent history in the engine checkout.

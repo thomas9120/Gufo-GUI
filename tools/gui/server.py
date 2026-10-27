@@ -196,6 +196,9 @@ def main():
         parser.exit(1, f"Cannot open launcher port {args.port}: {exc}\n")
     signal.signal(signal.SIGINT, lambda *_: exiting.set())
     signal.signal(signal.SIGTERM, lambda *_: exiting.set())
+    if hasattr(signal, "SIGHUP"):
+        # Closing the terminal must still stop the owned engine on POSIX.
+        signal.signal(signal.SIGHUP, lambda *_: exiting.set())
     url = f"http://127.0.0.1:{args.port}"
     print(f"Gufo launcher: {url}\nSettings: {args.config}\nCtrl+C stops the launcher and its Gufo server.", flush=True)
     worker = threading.Thread(target=server.run, daemon=True)
