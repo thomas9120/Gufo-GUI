@@ -8,14 +8,7 @@ sampling and reasoning controls, speculative decoding, live status, and Start/St
 
 Simplified Chinese language support by @jerrydong1988
 
-## Releases
 
-To publish a release, open **Actions → Release → Run workflow** and select the
-branch to release. The workflow tags the selected commit and publishes a GitHub
-release with generated release notes, using `Gufo-GUI-YYYY.MM.NN` (for example,
-`Gufo-GUI-2026.10.01`). The counter starts at `01` each UTC month and increments
-from the highest existing tag for that month. No build artifacts are uploaded;
-GitHub provides the source ZIP and tar.gz downloads automatically.
 
 ## Getting started
 
