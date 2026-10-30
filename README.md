@@ -2,7 +2,6 @@
 
 
 A standalone browser launcher for the official [Gufo inference engine](https://github.com/gufo-org/gufo).
-Adapted from the GUI and Windows setup scripts in [thomas9120/gufo-windows](https://github.com/thomas9120/gufo-windows).
 The launcher manages one text inference server, with model selection, named presets,
 sampling and reasoning controls, speculative decoding, live status, and Start/Stop/Exit.
 
