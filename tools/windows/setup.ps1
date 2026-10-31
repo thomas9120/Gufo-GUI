@@ -11,6 +11,7 @@ param(
   [ValidateRange(1, 64)][int]$Jobs = 4
 )
 $ErrorActionPreference = "Stop"
+if ($env:GUFO_INSTALLER_EVENTS -eq "1") { [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false) }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
 $stateFile = Join-Path $root "build\windows-setup.json"
 $repository = "https://github.com/gufo-org/gufo.git"
@@ -29,6 +30,12 @@ $packages = [ordered]@{
   CMake = @("Kitware.CMake", "4.4.0")
   Ninja = @("Ninja-build.Ninja", "1.13.2")
   Python = @("Python.Python.3.14", "3.14.6")
+}
+
+function Write-InstallerPhase([string]$Phase) {
+  if ($env:GUFO_INSTALLER_EVENTS -eq "1") {
+    Write-Host ("GUFO_EVENT " + (@{schema=1; phase=$Phase} | ConvertTo-Json -Compress))
+  }
 }
 
 function Invoke-SetupCommand([string]$File, [string[]]$Arguments) {
@@ -164,6 +171,7 @@ function Install-SetupPackage([string]$Name) {
     $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
     if (-not $winget) { throw "Install/update Microsoft's App Installer from https://aka.ms/getwinget, then rerun setup. Manual prerequisites: README.md" }
     $arguments = @("install", "--id", $package[0], "--version", $package[1], "--exact", "--source", "winget", "--architecture", "x64", "--accept-source-agreements")
+    if ($env:GUFO_INSTALLER_EVENTS -eq "1") { $arguments += @("--disable-interactivity", "--accept-package-agreements") }
     if ($Name -eq "VS") {
       $arguments += @("--override", "--wait --passive --norestart --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.26100")
     }
@@ -324,6 +332,7 @@ function Write-SetupPlan($Tools, [object[]]$Missing, [string]$Path) {
 }
 
 function Invoke-WindowsSetup {
+  Write-InstallerPhase "inspect"
   Assert-SetupMachine
   Assert-EngineStopped
   $tools = Get-SetupTools
@@ -353,6 +362,7 @@ function Invoke-WindowsSetup {
   Start-Transcript -Path $log | Out-Null
   try {
     Write-Host "Detailed setup log: $log"
+    Write-InstallerPhase "tools"
     Save-SetupTools $tools
     foreach ($name in $missing) {
       Install-SetupPackage $name
@@ -360,7 +370,9 @@ function Invoke-WindowsSetup {
       if (-not $tools.$name) { throw "$name is still unavailable. Finish its installer/restart if requested, then rerun setup. See README.md for manual installation." }
       Save-SetupTools $tools
     }
+    Write-InstallerPhase "source"
     Initialize-GufoSource $tools.Git
+    Write-InstallerPhase "dependencies"
     if (-not $tools.Rocm) { $tools.Rocm = Install-SetupRock; Save-SetupTools $tools }
     Write-Host "Preparing vcpkg dependencies..." -ForegroundColor Cyan
     $tools.Vcpkg = Initialize-SetupVcpkg $tools.Git $tools.Vcpkg
@@ -370,14 +382,18 @@ function Invoke-WindowsSetup {
     if (-not (Test-Path -LiteralPath $shell)) { $shell = Join-Path $PSHOME "pwsh.exe" }
     $options = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File")
     Assert-EngineStopped
+    Write-InstallerPhase "build"
     Write-Host "Building Gufo. The first build also compiles dependencies; this can take a while..." -ForegroundColor Cyan
     Invoke-SetupCommand $shell ($options + @("$PSScriptRoot\build.ps1", "-GufoPath", $engineRoot, "-VisualStudio", $tools.VS, "-Python", $tools.Python, "-Jobs", "$Jobs", "-Rocm", $tools.Rocm, "-Vcpkg", $tools.Vcpkg, "-Ninja", $tools.Ninja))
     $engine = Join-Path $engineRoot "build\windows-release\gufo.exe"
+    Write-InstallerPhase "verify"
     Write-Host "Checking the built executable and GPU (no model is loaded)..." -ForegroundColor Cyan
     Invoke-SetupCommand $engine @("--version")
     # Run outside the build script's compiler environment, just as the GUI will.
     Invoke-SetupCommand $engine @("diagnose", "--section", "gpu")
+    Write-InstallerPhase "gui"
     Invoke-SetupCommand $shell ($options + @("$PSScriptRoot\gui.ps1", "-Python", $tools.Python, "-PrepareOnly"))
+    Write-InstallerPhase "complete"
     Write-Host "`nSetup complete. Next time, double-click launch-gui.bat." -ForegroundColor Green
     Write-Host "Select your model files in the GUI and save. Existing saved executable selections are unchanged; new settings default to $engine."
   } catch {

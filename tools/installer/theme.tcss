@@ -1,0 +1,27 @@
+/* Forest green, warm amber, and cream from the original Gufo Setup palette. */
+Screen { background: #111b14; color: #ede0c8; align: center middle; }
+#frame { width: 100%; max-width: 120; height: 1fr; margin: 1 2; padding: 1 2;
+    border: round #5e7a5e; background: #17251b; }
+#banner { height: 5; margin-bottom: 1; color: #d9a05b; text-style: bold; }
+#subtitle { height: 2; color: #8a9a84; }
+.panel { height: 1fr; }
+.hidden { display: none; }
+#facts { height: auto; margin-bottom: 1; }
+#menu { height: auto; border: none; background: #17251b; }
+#menu > .option-list--option-highlighted { background: #2e4a34; color: #f2e7d2; }
+Label { margin-top: 1; color: #d9a05b; }
+Input { background: #111b14; border: tall #5e7a5e; }
+Input:focus { border: tall #d9a05b; }
+.buttons { height: auto; min-height: 3; margin-top: 1; }
+Button { margin-right: 2; background: #2e4a34; color: #ede0c8; border: tall #5e7a5e; }
+Button.-primary { background: #2e4a34; color: #f2e7d2; }
+Button.-warning { background: #67452a; color: #f2e7d2; }
+Button:focus { text-style: bold; border: tall #d9a05b; }
+#plan { height: auto; }
+#phases { height: auto; max-height: 9; color: #d9a05b; }
+#progress { height: 1; margin: 1 0; }
+#output { height: 1fr; min-height: 3; background: #111b14; border: round #5e7a5e; }
+#status { height: auto; max-height: 4; margin-top: 1; color: #8fbf6f; }
+Footer { background: #111b14; }
+Confirm { align: center middle; background: #111b14 85%; }
+#confirm { width: 80%; max-width: 90; height: auto; padding: 1 2; border: round #d9a05b; background: #17251b; }

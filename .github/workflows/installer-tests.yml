@@ -1,0 +1,25 @@
+name: Installer checks
+
+on:
+  push:
+    paths: ['tools/installer/**', 'tools/windows/**', 'tools/linux/**', 'tests/tools/*installer*', 'tests/tools/*launcher*', 'Gufo-Setup.cmd', 'gufo-setup.sh', '.github/workflows/installer-tests.yml']
+  pull_request:
+    paths: ['tools/installer/**', 'tools/windows/**', 'tools/linux/**', 'tests/tools/*installer*', 'tests/tools/*launcher*', 'Gufo-Setup.cmd', 'gufo-setup.sh', '.github/workflows/installer-tests.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: python -m pip install -r tools/installer/requirements.txt
+      - run: python -m unittest discover -s tests/tools -p installer_test.py -v
+      - run: python -m unittest discover -s tests/tools -p '*launcher_test.py' -v

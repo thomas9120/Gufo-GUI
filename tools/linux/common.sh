@@ -16,6 +16,36 @@ else color_info="" color_good="" color_bad="" color_off=""; fi
 info() { printf '%s%s%s\n' "$color_info" "$*" "$color_off"; }
 success() { printf '%s%s%s\n' "$color_good" "$*" "$color_off"; }
 
+installer_phase() {
+  if [[ ${GUFO_INSTALLER_EVENTS:-} == 1 ]]; then
+    printf 'GUFO_EVENT {"schema":1,"phase":"%s"}\n' "$1"
+  fi
+  return 0
+}
+
+write_setup_plan() {
+  # No Python dependency on a first-time plain setup unless JSON is requested.
+  [[ -n ${plan_json:-} ]] || return 0
+  [[ -n $python_bin ]] || die "Python 3.10+ is required to export a JSON plan."
+  "$python_bin" -I - "$plan_json" "$root" "$engine_root" "$repository" "$jobs" "$rocm_path" \
+    "$git_bin" "$cmake_bin" "$ninja_bin" "$cxx_bin" "$pkg_config_bin" "$python_bin" \
+    "$(join_list "${missing_system[@]}")" "${package_manager[0]:-}" "${system_packages[*]}" <<'EOF' || die "Cannot write setup plan."
+import json, os, pathlib, sys
+path, root, engine, repository, jobs, rocm, *rest = sys.argv[1:]
+tools, missing, manager, packages = rest[:6], rest[6], rest[7], rest[8]
+plan = dict(schema=1, root=root, gufoPath=engine, repository=repository, jobs=int(jobs),
+            packages=[dict(name=name, path=value, action="reuse" if value else "install")
+                      for name, value in zip(("Git", "CMake", "Ninja", "C++ compiler", "pkg-config", "Python"), tools)],
+            missing=missing.split(", ") if missing else [],
+            rock=dict(path=rocm, action="reuse" if rocm else "install manually"),
+            requiresSudo=bool(missing) and os.geteuid() != 0,
+            systemPackages=packages.split() if missing else [], packageManager=manager)
+destination = pathlib.Path(path)
+destination.parent.mkdir(parents=True, exist_ok=True)
+destination.write_text(json.dumps(plan, indent=2), encoding="utf-8")
+EOF
+}
+
 join_list() {
   local IFS=$'\x1f' items
   items="$*"
@@ -182,6 +212,7 @@ detect_package_manager() {
 install_system_packages() {
   local -a elevate=()
   [[ $(id -u) -eq 0 ]] || elevate=(sudo)
+  if [[ ${GUFO_INSTALLER_EVENTS:-} == 1 && ${#elevate[@]} -gt 0 ]]; then elevate+=(-n); fi
   info "Installing system packages with ${package_manager[0]}..."
   setup_command "${elevate[@]}" "${package_manager[@]}" "${system_packages[@]}"
 }

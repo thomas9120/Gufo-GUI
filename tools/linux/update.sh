@@ -11,16 +11,20 @@ Usage: update-linux.sh [options]
   --gufo-path PATH  Official Gufo checkout (default: the folder saved by setup)
   --rocm PATH       ROCm installation prefix (default: the saved or detected prefix)
   --jobs N          Parallel build jobs, 1-64 (default: 4)
+  --check-only      Inspect prerequisites and source without updating
+  --plan-json PATH  Write the machine-readable plan with --check-only
 EOF
 }
 
 parse_update_args() {
-  gufo_path="" rocm="" jobs=4
+  gufo_path="" rocm="" jobs=4 check_only=0 plan_json=""
   while (( $# )); do
     case $1 in
       --gufo-path) [[ $# -ge 2 ]] || die "$1 needs a value."; gufo_path=$2; shift ;;
       --rocm) [[ $# -ge 2 ]] || die "$1 needs a value."; rocm=$2; shift ;;
       --jobs) [[ $# -ge 2 ]] || die "$1 needs a value."; jobs=$2; shift ;;
+      --check-only) check_only=1 ;;
+      --plan-json) [[ $# -ge 2 ]] || die "$1 needs a value."; plan_json=$2; shift ;;
       -h|--help) update_usage; exit 0 ;;
       *) update_usage >&2; die "Unknown option: $1" ;;
     esac
@@ -31,6 +35,7 @@ parse_update_args() {
 
 run_linux_update() {
   parse_update_args "$@"
+  installer_phase inspect
   resolve_engine_root "$gufo_path"
   detect_setup_tools "$rocm"
   [[ -n $rocm_path ]] || missing_system+=("ROCm development files")
@@ -39,12 +44,22 @@ run_linux_update() {
   fi
   assert_engine_stopped
   assert_gufo_source "$git_bin"
+  if (( check_only )); then
+    detect_package_manager
+    write_setup_plan
+    printf 'Preview only; update will fast-forward official main, rebuild, and verify GPU startup.\n'
+    return 0
+  fi
+  installer_phase source
   info "Updating official Gufo main at $engine_root..."
   setup_command "$git_bin" -C "$engine_root" pull --ff-only --no-rebase --no-autostash "$repository" main
   assert_engine_stopped
   save_setup_state
+  installer_phase build
   build_gufo
+  installer_phase verify
   verify_engine
+  installer_phase complete
   printf '\n'
   success "Update complete: $engine"
   printf 'Run ./launch-gui.sh. Saved presets are preserved.\n'

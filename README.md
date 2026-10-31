@@ -18,6 +18,12 @@ This setup targets **Windows 11 x64 and Linux on AMD Strix Halo / gfx1151**. Ins
 graphics driver first. Models are downloaded separately; keep enough disk and GPU
 memory for your model and context size.
 
+For a guided terminal interface, run **Gufo-Setup.cmd** on Windows or
+`bash gufo-setup.sh` on Linux. It provides install, engine update, repair, GUI
+launch/update, settings, and logs in one menu. See the
+[Gufo Setup guide](tools/installer/README.md) for requirements, plain mode,
+and update/recovery behavior. The direct scripts below remain available.
+
 ### Windows
 
 1. Download or clone this repository into a writable folder.

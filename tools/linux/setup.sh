@@ -11,19 +11,21 @@ Usage: setup-linux.sh [options]
   --rocm PATH       ROCm installation prefix (default: detect /opt/rocm or /usr)
   --jobs N          Parallel build jobs, 1-64 (default: 4)
   --check-only      Show the plan without installing or building
+  --plan-json PATH  Write the machine-readable plan with --check-only
   --yes             Accept the plan without asking
   --no-launch       Do not open the launcher when setup completes
 EOF
 }
 
 parse_setup_args() {
-  gufo_path="" rocm="" jobs=4 check_only=0 assume_yes=0 no_launch=0
+  gufo_path="" rocm="" jobs=4 check_only=0 assume_yes=0 no_launch=0 plan_json=""
   while (( $# )); do
     case $1 in
       --gufo-path) [[ $# -ge 2 ]] || die "$1 needs a value."; gufo_path=$2; shift ;;
       --rocm) [[ $# -ge 2 ]] || die "$1 needs a value."; rocm=$2; shift ;;
       --jobs) [[ $# -ge 2 ]] || die "$1 needs a value."; jobs=$2; shift ;;
       --check-only) check_only=1 ;;
+      --plan-json) [[ $# -ge 2 ]] || die "$1 needs a value."; plan_json=$2; shift ;;
       --yes|-y) assume_yes=1 ;;
       --no-launch) no_launch=1 ;;
       -h|--help) setup_usage; exit 0 ;;
@@ -67,6 +69,7 @@ require_rocm() {
 run_linux_setup() {
   local log answer fresh=5
   parse_setup_args "$@"
+  installer_phase inspect
   resolve_engine_root "$gufo_path"
   assert_setup_machine
   assert_engine_stopped
@@ -77,6 +80,7 @@ run_linux_setup() {
   [[ -e $engine_root/build/$preset ]] || fresh=25
   assert_setup_space "$fresh"
   if (( check_only )); then
+    write_setup_plan
     printf 'Preview only; nothing installed or changed.\n'
     return 0
   fi
@@ -96,6 +100,7 @@ run_linux_setup() {
   exec 3>&1 4>&2
   exec > >(tee -a -- "$log") 2>&1
   printf 'Detailed setup log: %s\n' "$log"
+  installer_phase tools
   if (( ${#missing_system[@]} )); then
     install_system_packages
     hash -r
@@ -105,14 +110,19 @@ run_linux_setup() {
     fi
   fi
   save_setup_state
+  installer_phase source
   initialize_gufo_source "$git_bin"
   assert_engine_stopped
   info "Building Gufo. The first build can take a while..."
+  installer_phase build
   build_gufo
+  installer_phase verify
   verify_engine
+  installer_phase gui
   setup_command bash "$root/tools/linux/gui.sh" --python "$python_bin" --prepare-only
   printf '\n'
   success "Setup complete. Next time, run ./launch-gui.sh."
+  installer_phase complete
   printf 'Select your model files in the GUI and save. Existing saved executable selections are unchanged; new settings default to %s.\n' "$engine"
   exec 1>&3 2>&4 3>&- 4>&-
   if (( ! no_launch )); then exec bash "$root/tools/linux/gui.sh"; fi
