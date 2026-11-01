@@ -178,6 +178,34 @@ Assert ($events.Count -eq 0) 'Build continued after failed pull'
         self.assertEqual(run().returncode, 7)
         self.assertEqual(len(log.read_text().splitlines()), 3, "Build ran after configure failed")
 
+    def test_update_preview_exports_plan_without_pulling_and_emits_structured_events(self):
+        self.run_ps(f". {quote(ROOT / 'tools/windows/update.ps1')}\n" + r'''
+$root = Split-Path -Parent $PSCommandPath
+$engineRoot = Join-Path $root 'official & engine'
+$stateFile = Join-Path $root 'build/windows-setup.json'
+$vcpkgPath = Join-Path $root 'vcpkg'
+New-Item -ItemType Directory -Path $vcpkgPath | Out-Null
+Set-Content -LiteralPath (Join-Path $vcpkgPath 'vcpkg.exe') -Value 'fixture'
+function Get-SetupTools {
+  [pscustomobject]@{Git='git.exe'; VS='vs'; CMake='cmake'; Ninja='ninja'; Python='python'; Rocm='rock'; Vcpkg=$vcpkgPath}
+}
+function Assert-EngineStopped { }
+function Assert-GufoSource { }
+function Invoke-SetupCommand { throw 'Preview must not execute commands' }
+function Get-CimInstance { [pscustomobject]@{Name='Test'; Caption='Test'; BuildNumber=22000; TotalVisibleMemorySize=1GB} }
+$CheckOnly = $true
+$PlanJson = Join-Path $root 'plan.json'
+Invoke-WindowsUpdate
+$plan = Get-Content -LiteralPath $PlanJson -Raw | ConvertFrom-Json
+Assert ($plan.repository -eq $repository) 'Update plan omitted official source'
+Assert (-not (Test-Path -LiteralPath $stateFile)) 'Preview saved state'
+$env:GUFO_INSTALLER_EVENTS = '1'
+$line = (Write-InstallerPhase 'build' 6>&1 | Out-String).Trim()
+Assert ($line.StartsWith('GUFO_EVENT ')) 'Missing event prefix'
+$event = $line.Substring(11) | ConvertFrom-Json
+Assert ($event.schema -eq 1 -and $event.phase -eq 'build') 'Invalid event'
+''')
+
     def test_reused_vcpkg_fetches_a_new_manifest_baseline(self):
         self.run_ps(r'''
 $git = (Get-Command git.exe).Source

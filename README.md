@@ -18,17 +18,30 @@ This setup targets **Windows 11 x64 and Linux on AMD Strix Halo / gfx1151**. Ins
 graphics driver first. Models are downloaded separately; keep enough disk and GPU
 memory for your model and context size.
 
+**Gufo Setup is the recommended way to install and manage Gufo-GUI and the
+official Gufo engine.** Run **Gufo-Setup.cmd** on Windows or `bash gufo-setup.sh`
+on Linux. The TUI provides install, engine update, repair, GUI launch/update,
+settings, and logs in one menu.
+
+The older `setup-windows.bat`, `update-windows.bat`, `setup-linux.sh`, and
+`update-linux.sh` remain available as legacy/fallback entry points. They use
+the same platform setup/build operations underneath the TUI.
+
 ### Windows
 
 1. Download or clone this repository into a writable folder.
-2. Double-click **setup-windows.bat**. Review its plan and accept to install missing
-   tools, clone **gufo-org/gufo, branch main**, build the engine, verify GPU startup,
-   and prepare the GUI environment. Setup opens the launcher when complete.
-3. Select your GGUF model and optional projector/draft files, save a preset, and
+2. Double-click **Gufo-Setup.cmd**. If Python is missing, accept the prompt to
+   install it. The bootstrap prepares an isolated environment for the TUI.
+3. Choose **Install Gufo and prepare GUI**, review the plan, and choose
+   **Continue**. Setup installs missing tools, clones **gufo-org/gufo, branch
+   main**, builds the engine, verifies GPU startup, and prepares the GUI.
+4. Return to the menu and choose **Launch Gufo-GUI**. Select your GGUF model
+   and optional projector/draft files, save a preset, and
    click **Start Gufo**. Connect your client to `http://127.0.0.1:8080/v1`
    with model name `gufo` by default.
 
-On later runs, double-click **launch-gui.bat**. The GUI opens at
+On later runs, choose **Launch Gufo-GUI** in Setup or double-click
+**launch-gui.bat** for direct access. The GUI opens at
 `http://127.0.0.1:8090`; opening it does not load a model. Keep the terminal open.
 **Stop** unloads the engine; **Exit** closes both the launcher and its engine.
 
@@ -40,34 +53,66 @@ The SDK comes from the mirror documented by upstream because AMD's index no
 longer serves this version. Setup verifies its pinned SHA-256 before extracting it.
 See [official Windows prerequisites and build instructions](https://github.com/gufo-org/gufo/blob/main/BUILD-WINDOWS.md).
 
+### Using the setup menu
+
+Use arrow keys and **Enter** to select a menu item, **Tab** to move between
+controls, **F2** for settings, **Escape** to go back, and **Q** or **Ctrl+C** to
+quit. Installation starts only after choosing **Continue** on the review screen.
+
+- **Settings / paths:** choose the engine folder, ROCm/TheRock and vcpkg paths,
+  and parallel build jobs before installing or updating.
+- **Repair tools / rebuild current source:** rerun setup against the current
+  engine revision, reusing completed downloads and build steps.
+- **View latest installer log:** inspect output after a failure; full logs are
+  saved under `build/installer-logs/`.
+
+For a plain terminal without the full-screen interface, use `--plain`:
+
+```powershell
+.\Gufo-Setup.cmd --plain --action install --check-only
+.\Gufo-Setup.cmd --plain --action install --gufo-path "D:\AI\Gufo" --jobs 8
+```
+
+```sh
+bash gufo-setup.sh --plain --action install --check-only
+bash gufo-setup.sh --plain --action install --gufo-path "$HOME/AI/gufo" --jobs 8
+```
+
+See the [Gufo Setup guide](tools/installer/README.md) for all actions, automation,
+cancellation, and recovery details. Keep the entry point beside the rest of the
+repository files; it is not a standalone installer download.
+
 ## Folders and existing installations
 
 The GUI and engine have separate checkouts:
 
 ```text
 Gufo-GUI/
+  Gufo-Setup.cmd                     recommended Windows setup menu
+  gufo-setup.sh                      recommended Linux setup menu
   launch-gui.bat
-  setup-windows.bat
-  update-windows.bat
+  setup-windows.bat                  legacy/fallback Windows setup
+  update-windows.bat                 legacy/fallback Windows engine update
   launch-gui.sh
-  setup-linux.sh
-  update-linux.sh
+  setup-linux.sh                     legacy/fallback Linux setup
+  update-linux.sh                    legacy/fallback Linux engine update
   tools/gui/                         GUI code and assets
+  tools/installer/                   shared TUI and plain CLI
   gufo/                              official Gufo source (created by setup)
     build/windows-release/gufo.exe   engine and staged runtime libraries
     build/release/gufo              Linux engine
-  build/gui-env/                     isolated Python environment
+  build/gui-env/                     isolated GUI Python environment
+  build/installer-env/               isolated TUI Python environment
+  build/installer-logs/              TUI/plain-mode operation logs
   build/windows-setup.json           saved tool and engine paths
   build/linux-setup.json             saved Linux tool and engine paths
   build/setup-*.log                  setup logs
 ```
 
 You can choose another folder, including an existing clean checkout of official
-Gufo on `main`. Run from PowerShell:
-
-```powershell
-.\setup-windows.bat -GufoPath "D:\AI\Gufo" -Jobs 4
-```
+Gufo on `main`. Open **Settings / paths** in the TUI and set the engine source
+folder before choosing Install. The plain-mode examples above provide the same
+choice from the command line.
 
 The folder is remembered for later setup, update, and default executable discovery.
 Setup refuses a fork or modified checkout; it does not convert your existing
@@ -82,22 +127,37 @@ you want to migrate. Back up presets using the GUI's Export function.
 
 ## Updating
 
-On Linux, follow [Updating on Linux](#updating-on-linux). The Windows engine
-update steps are below; the GUI update instructions apply to both platforms.
+On either platform, open **Gufo-Setup.cmd** / `bash gufo-setup.sh`:
 
-Stop the engine, then run **update-windows.bat**. It fast-forwards the separate
-official checkout from `gufo-org/gufo` `main`, reapplies upstream's idempotent SDK
-header patch, builds with the `windows-release` preset, and checks GPU startup.
-Local changes, untracked files, a different branch, or a divergent history stop
-the update. Resolve them in the engine checkout before retrying.
-If compilation fails after pulling, the source update is retained; fix the error
-and rerun the updater.
+- **Engine:** stop Gufo in the GUI, choose **Update official Gufo engine**, review
+  the plan, and choose **Continue**. Setup fast-forwards the separate official
+  engine checkout from `main`, rebuilds, and verifies GPU startup.
+- **GUI:** close the web GUI and engine, then choose **Update Gufo-GUI**. This
+  requires a clean GUI checkout on `main` with the official GUI origin. The TUI
+  closes before Git updates the repository. Run Setup again afterward to load
+  the updated installer. Source archives and development branches must be
+  updated manually; preserve the `gufo` and `build` folders when replacing a
+  source download.
 
-To update the GUI itself, pull this repository or replace it with a newer download,
-preserving the `gufo` and `build` folders. Launcher dependencies refresh when
-`requirements.txt` changes. Updating the engine leaves GUI code and presets intact.
+For engine updates, local changes, untracked files, a different branch, or a
+divergent history stop the update. Resolve them in the engine checkout before
+retrying.
+Engine updates build in place: if compilation or verification fails after
+pulling, the source update is retained and the old runtime may have been
+replaced. Fix the error and use **Repair**; there is no automatic runtime rollback.
 
-## Options
+Launcher dependencies refresh when `requirements.txt` changes. Updating the
+engine leaves GUI code and presets intact.
+
+### Legacy/fallback Windows scripts
+
+If you prefer the original direct scripts or need a fallback, run
+**setup-windows.bat** for setup or **update-windows.bat** for engine updates.
+Stop the engine before updating. The updater reapplies upstream's idempotent
+SDK header patch, builds the `windows-release` preset, and checks GPU startup.
+
+These examples use the older scripts' PowerShell-style options. The new Setup
+entry point uses the `--plain`, `--action`, and other options shown above.
 
 ```powershell
 .\setup-windows.bat -CheckOnly                      # show plan without installing
@@ -116,8 +176,9 @@ For GUI controls and development checks, see [tools/gui/README.md](tools/gui/REA
 
 ## Linux
 
-The Linux scripts mirror the Windows ones and target **x86-64 Linux on AMD Strix
-Halo / gfx1151**. Install ROCm first using
+Gufo Setup targets **x86-64 Linux on AMD Strix Halo / gfx1151**. Install 64-bit
+Python 3.10+ with venv support (`python3-venv` on Debian/Ubuntu), then install
+ROCm using
 [AMD's Linux instructions](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/)
 (upstream qualifies ROCm 7.2.3), including the hipBLAS, hipBLASLt, rocBLAS, hipCUB,
 rocPRIM and rocWMMA development packages. Add your user to the `render` and
@@ -130,14 +191,17 @@ rocPRIM and rocWMMA development packages. Add your user to the `render` and
 2. Open a terminal in the `Gufo-GUI` folder and run:
 
    ```sh
-   bash setup-linux.sh
+   bash gufo-setup.sh
    ```
 
-3. Review the setup plan and accept it. Setup installs missing build tools,
+3. Choose **Install Gufo and prepare GUI**, review the plan, and choose
+   **Continue**. Setup installs missing build tools,
    clones the official `gufo-org/gufo` `main` branch, builds the engine, verifies
    GPU startup, and prepares the GUI's Python environment. The first build can
-   take a while. Setup opens the GUI when it completes.
-4. In the GUI, select your GGUF model and any optional projector or draft model,
+   take a while. If system packages are needed, authenticate `sudo` in the
+   terminal when prompted before installation starts.
+4. Return to the menu and choose **Launch Gufo-GUI**. In the GUI, select your
+   GGUF model and any optional projector or draft model,
    save a preset, and click **Start Gufo**. Connect your client to
    `http://127.0.0.1:8080/v1` with model name `gufo` by default.
 
@@ -146,15 +210,17 @@ to install missing build tools and libraries through `sudo`; it does not install
 ROCm or change GPU drivers. It builds upstream's `release` preset, so the engine
 is `gufo/build/release/gufo`. The chosen folders and tools are saved in
 `build/linux-setup.json`, and presets are saved in `~/.config/Gufo/launcher.json`.
-Setup logs are written to `build/setup-*.log`. If setup fails, read the error,
-fix the missing prerequisite, and rerun the same command.
+Full operation logs are written to `build/installer-logs/`; the platform setup
+also writes `build/setup-*.log`. If setup fails, read the error, fix the missing
+prerequisite, and use **Repair tools / rebuild current source**.
 
 The commands here use `bash` so they also work when a downloaded ZIP has not
 preserved executable permissions. Run them from the repository folder.
 
 ### Launching on Linux
 
-On later runs, open a terminal in the repository folder and run:
+On later runs, choose **Launch Gufo-GUI** in Setup. For direct access, open a
+terminal in the repository folder and run:
 
 ```sh
 bash launch-gui.sh
@@ -172,25 +238,23 @@ use. On Debian/Ubuntu, install `python3-venv` if environment creation fails.
 
 ### Updating on Linux
 
-Stop the engine in the GUI, then run:
+Stop the engine in the GUI, run `bash gufo-setup.sh`, and choose **Update
+official Gufo engine**. Review the plan and choose **Continue**. It reuses the
+paths saved by setup and preserves your presets. See [Updating](#updating) for
+checkout requirements, GUI updates, and recovery limits.
+
+### Legacy/fallback Linux scripts
+
+The original direct scripts remain available for setup and engine updates:
 
 ```sh
+bash setup-linux.sh
 bash update-linux.sh
 ```
 
-The updater fast-forwards the separate official engine checkout from `main`,
-rebuilds it with the `release` preset, and verifies GPU startup. It reuses the
-paths saved by setup and preserves your presets. Local changes, untracked files,
-another branch, or divergent history in the engine checkout stop the update;
-resolve them before retrying. If a build fails after pulling, the source update
-is retained; fix the error and rerun the updater.
-
-After updating, run `bash launch-gui.sh` again. To update the GUI itself, pull
-this repository or replace it with a newer source download, preserving the
-`gufo` and `build` folders. The launcher refreshes its Python dependencies when
-`requirements.txt` changes.
-
-### Linux options
+Stop the engine before running the updater. It fast-forwards official `main`,
+builds the `release` preset, and verifies GPU startup. The direct setup script
+opens the GUI when it finishes. Optional arguments for these legacy scripts:
 
 ```sh
 bash setup-linux.sh --check-only                  # show plan without installing

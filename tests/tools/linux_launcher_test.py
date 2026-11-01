@@ -14,6 +14,29 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @unittest.skipUnless(os.name == "posix" and shutil.which("bash"), "Linux scripts require bash on POSIX")
 class LinuxLauncherTest(unittest.TestCase):
+    def test_update_preview_exports_plan_without_pulling_and_emits_structured_events(self):
+        self.run_bash(r'''
+resolve_engine_root() { :; }
+assert_engine_stopped() { :; }
+assert_gufo_source() { :; }
+detect_setup_tools() {
+  git_bin=/tools/git cmake_bin=/tools/cmake ninja_bin=/tools/ninja cxx_bin=/tools/c++
+  pkg_config_bin=/tools/pkg-config python_bin=$(command -v python3) rocm_path=/opt/rocm missing_system=()
+}
+setup_command() { fail 'Preview must not execute commands'; }
+run_linux_update --check-only --plan-json "$root/plan & space.json"
+[[ ! -e $state_file ]] || fail 'Preview saved state'
+python3 - "$root/plan & space.json" <<'PY'
+import json, sys
+plan = json.load(open(sys.argv[1]))
+assert plan['repository'] == 'https://github.com/gufo-org/gufo.git'
+assert plan['schema'] == 1 and plan['requiresSudo'] is False
+assert plan['packages'][0]['action'] == 'reuse'
+PY
+export GUFO_INSTALLER_EVENTS=1
+[[ $(installer_phase build) == 'GUFO_EVENT {"schema":1,"phase":"build"}' ]] || fail 'Invalid event'
+''', script="update.sh")
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="gufo launcher & spaces ")
         self.addCleanup(self.temporary.cleanup)
