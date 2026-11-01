@@ -1,5 +1,6 @@
 """Installer contracts: plans are read-only, execution is reviewed, and children are owned."""
 
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -144,7 +145,7 @@ class InstallerTest(unittest.TestCase):
 
 
 try:
-    from tui import SetupApp
+    from tui import Confirm, SetupApp
     from textual.widgets import Button, Input
 except ImportError:
     SetupApp = None
@@ -155,7 +156,8 @@ class TuiTest(unittest.IsolatedAsyncioTestCase):
     async def test_cancel_requires_confirmation_and_returns_to_menu(self):
         class FakeInstaller(Installer):
             def execute(self, action, options, runner, on_line):
-                runner.cancelled.wait(10)
+                # Only an actual cancellation may finish this fake operation.
+                runner.cancelled.wait()
                 return 2
 
         with tempfile.TemporaryDirectory() as directory:
@@ -164,19 +166,35 @@ class TuiTest(unittest.IsolatedAsyncioTestCase):
                 app.selected_action = "install"
                 app.start_activity("Installing")
                 app.perform()
-                await pilot.pause()
-                self.assertTrue(await pilot.click("#cancel"))
-                await pilot.click("#no")
-                self.assertTrue(app.busy)
-                self.assertFalse(app.runner.cancelled.is_set())
-                await pilot.click("#cancel")
-                await pilot.click("#yes")
-                await app.workers.wait_for_complete()
-                await pilot.pause()
-                self.assertFalse(app.busy)
-                self.assertFalse(app.quit_pending, "Cancel button unexpectedly quit the app")
-                await pilot.click("#activity-back")
-                self.assertEqual(app.view, "home")
+                # Exercise immediate retry without the button's cosmetic cooldown.
+                app.query_one("#cancel", Button).active_effect_duration = 0
+
+                async def click(selector):
+                    # Pilot resolves coordinates before it processes pending layout.
+                    # A newly pushed dialog must be laid out before targeting it.
+                    await pilot.pause()
+                    self.assertTrue(await pilot.click(selector), f"Click missed {selector}")
+
+                try:
+                    await click("#cancel")
+                    self.assertIsInstance(app.screen, Confirm)
+                    await click("#no")
+                    self.assertNotIsInstance(app.screen, Confirm)
+                    self.assertTrue(app.busy)
+                    self.assertFalse(app.runner.cancelled.is_set())
+                    await click("#cancel")
+                    self.assertIsInstance(app.screen, Confirm)
+                    await click("#yes")
+                    self.assertNotIsInstance(app.screen, Confirm)
+                    await asyncio.wait_for(app.workers.wait_for_complete(), timeout=5)
+                    await pilot.pause()
+                    self.assertTrue(app.runner.cancelled.is_set())
+                    self.assertFalse(app.busy)
+                    self.assertFalse(app.quit_pending, "Cancel button unexpectedly quit the app")
+                    await click("#activity-back")
+                    self.assertEqual(app.view, "home")
+                finally:
+                    app.runner.cancel()
 
     async def test_keyboard_navigation_plan_review_and_execution(self):
         class FakeInstaller(Installer):
