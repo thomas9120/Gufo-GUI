@@ -65,6 +65,8 @@ export const messages = {
   "Off": "关闭",
   "Model default": "模型默认",
   "Default thinking level": "默认思考强度",
+  "Thinking budget (tokens)": "思考预算（Token）",
+  "-1 leaves thinking unlimited; 0 skips it. The output limit includes thinking and the answer. Clients can override these defaults.": "-1 表示不限思考长度，0 表示跳过思考。最大输出长度包含思考和最终答案；客户端可覆盖这些默认值。",
   "API bind address": "API 绑定地址",
   "Use 127.0.0.1 for local access, 0.0.0.0 for all interfaces, or your local IPv4 address. Network clients use this PC's LAN address.": "使用 127.0.0.1 仅限本机访问，0.0.0.0 监听所有接口，或填写本机 IPv4 地址。网络客户端请使用此电脑的局域网地址。",
   "host: enter an IPv4 address, such as 127.0.0.1 or 0.0.0.0.": "host: 请输入 IPv4 地址，例如 127.0.0.1 或 0.0.0.0。",

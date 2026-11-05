@@ -44,6 +44,7 @@ DEFAULTS = {
     "mmproj": "",  # Empty means engine auto-discovery, not disabled vision.
     "context": 32768,
     "max_tokens": 2048,
+    "reasoning_budget": -1,
     "think": "on",
     "reasoning_effort": "auto",
     "preserve_thinking": True,
@@ -71,6 +72,7 @@ DEFAULTS = {
 }
 INTEGER_LIMITS = {
     "context": (0, 2**32 - 1), "max_tokens": (-1, 2**32 - 1),
+    "reasoning_budget": (-1, 2**31 - 1),
     "port": (1, 65535), "sessions": (1, 64), "top_k": (0, 2**31 - 1),
     "seed": (-1, 2**53 - 1), "repeat_last_n": (0, 2**32 - 1),
     "draft_tokens": (1, 7),

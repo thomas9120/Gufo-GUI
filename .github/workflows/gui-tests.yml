@@ -1,0 +1,46 @@
+name: GUI checks
+
+on:
+  push:
+    paths: ['tools/gui/**', 'tests/tools/gui_*', 'assets/**', '.github/workflows/gui-tests.yml']
+  pull_request:
+    paths: ['tools/gui/**', 'tests/tools/gui_*', 'assets/**', '.github/workflows/gui-tests.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gui:
+    name: GUI (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      GUI_TEST_PYTHON: python
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install GUI dependencies
+        run: python -m pip install -r tools/gui/requirements.txt
+      - name: Install DOM test dependency
+        run: npm install --prefix build/gui-test-js --ignore-scripts --no-save --package-lock=false jsdom@26.1.0
+      - name: Test Python GUI contracts and process lifecycle
+        run: python -m unittest discover -s tests/tools -p "gui_*_test.py" -v
+      - name: Test DOM interactions and translations
+        # gui_dom_test imports the runtime tests; avoid running them twice.
+        run: node --experimental-vm-modules --test tests/tools/gui_dom_test.mjs

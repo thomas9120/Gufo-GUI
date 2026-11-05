@@ -34,6 +34,8 @@ def build_command(values, *, check_files=False):
                "llm", "--model", settings["model"]]
     for key in CLI_FIELDS:
         command.extend(["--" + key.replace("_", "-"), str(settings[key])])
+    if settings["reasoning_budget"] >= 0:
+        command.extend(["--reasoning-budget", str(settings["reasoning_budget"])])
     command.extend(["--preserve-thinking", "on" if settings["preserve_thinking"] else "off"])
     if settings["cache_ram_gib"]:
         command.extend(["--cache-ram-bytes", str(settings["cache_ram_gib"] * 1024**3)])

@@ -7,6 +7,12 @@ for prerequisites, custom engine folders, updates, and command-line options.
 
 ## Using the GUI
 
+Thinking budget is saved per preset and maps to `--reasoning-budget`.
+Use `-1` for no separate thinking limit, `0` to skip thinking, or a positive
+token budget. Max output tokens includes both thinking and the final answer;
+reserve enough room for the answer. Clients can override these server defaults.
+Older presets retain unlimited thinking until a budget is explicitly saved.
+
 1. Choose a models folder and select a main GGUF. Browse subfolders or paste
    an absolute path. For split models, select the first shard.
 2. Choose a model family and speculative mode: Off, MTP for Flash-Next, or
@@ -79,6 +85,14 @@ platform with temporary checkouts and simulated builds; they do not install
 prerequisites or load models.
 DOM tests use Flask-rendered templates. Set `GUI_TEST_PYTHON` if the test Python
 is outside `build/gui-env`. DOM tests verify interactions, not browser layout.
+
+GitHub Actions runs [GUI checks](../../.github/workflows/gui-tests.yml) on
+Windows and Ubuntu for changes to GUI code, GUI tests, assets, or the workflow.
+The jobs use Python 3.10 and Node 22, run the `gui_*_test.py` backend suite,
+and run `gui_dom_test.mjs` (which also imports the runtime DOM tests).
+These checks use temporary settings and fake engine processes, without model
+weights or a GPU. Installer and platform-launcher checks remain in their
+separate workflow. The GUI workflow can also be started manually.
 
 The GUI was extracted from thomas9120/gufo-windows at commit
 `134ccfa0a05645be6fd1d5b6b6e4a871c17d49d8`, under the MIT license.
