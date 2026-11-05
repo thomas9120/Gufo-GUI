@@ -201,6 +201,28 @@ test("restoring a preset keeps sidecars; changing its model clears them", async 
   assert.equal(form.values().speculative, "off");
 });
 
+test("thinking budget survives preset switches and thinking toggles", async (t) => {
+  const env = await setup(t);
+  const { createSettingsForm } = await env.use("settings-form.js");
+  const { settings, families, modes } = env.initial;
+  const form = createSettingsForm(settings, families, modes, () => {});
+  const flash = { ...settings, model_family: "qwen38_flash_next", max_tokens: 8192,
+    reasoning_budget: 4096, speculative: "mtp" };
+  form.apply(flash);
+  assert.equal(form.values().reasoning_budget, 4096);
+  assert.equal(form.values().max_tokens, 8192);
+  edit(env, "think", "off");
+  assert.equal(env.$("reasoning_budget").disabled, true);
+  assert.equal(form.values().reasoning_budget, 4096);
+  edit(env, "think", "on");
+  assert.equal(env.$("reasoning_budget").disabled, false);
+  form.apply(settings);
+  assert.equal(form.values().reasoning_budget, -1);
+  form.apply(flash);
+  assert.equal(form.values().speculative, "mtp");
+  assert.equal(form.values().reasoning_budget, 4096);
+});
+
 test("reasoning preservation and disk caching restore independently of thinking", async (t) => {
   const env = await setup(t);
   const { createSettingsForm } = await env.use("settings-form.js");

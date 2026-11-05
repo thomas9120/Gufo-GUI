@@ -7,6 +7,12 @@ for prerequisites, custom engine folders, updates, and command-line options.
 
 ## Using the GUI
 
+Thinking budget is saved per preset and maps to `--reasoning-budget`.
+Use `-1` for no separate thinking limit, `0` to skip thinking, or a positive
+token budget. Max output tokens includes both thinking and the final answer;
+reserve enough room for the answer. Clients can override these server defaults.
+Older presets retain unlimited thinking until a budget is explicitly saved.
+
 1. Choose a models folder and select a main GGUF. Browse subfolders or paste
    an absolute path. For split models, select the first shard.
 2. Choose a model family and speculative mode: Off, MTP for Flash-Next, or

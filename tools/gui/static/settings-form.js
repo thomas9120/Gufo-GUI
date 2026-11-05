@@ -36,6 +36,7 @@ export function createSettingsForm(initial, families, modes, onEdit) {
       }
     }
     $("reasoning_effort").disabled = $("think").value === "off";
+    $("reasoning_budget").disabled = $("think").value === "off";
     $("disk-cache-options").disabled = !$("cache_disk").checked;
     text($("family-hint"), family.hint);
     $("family-defaults").hidden = !Object.keys(family.defaults).length;
