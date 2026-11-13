@@ -216,8 +216,27 @@ function Install-SetupRock {
   throw "TheRock extracted, but its expected runtime/compiler files were not found in $destination."
 }
 
+function Get-MissingVcpkgOverrides($Manifest, [string]$Path) {
+  foreach ($override in $Manifest.overrides) {
+    $name = $override.name
+    $database = Join-Path $Path "versions\$($name.Substring(0, 1))-\$name.json"
+    $found = $false
+    if (Test-Path -LiteralPath $database) {
+      $versions = (Get-Content -LiteralPath $database -Raw | ConvertFrom-Json).versions
+      foreach ($entry in $versions) {
+        foreach ($scheme in @('version', 'version-semver', 'version-date', 'version-string')) {
+          if ($override.$scheme -and $override.$scheme -eq $entry.$scheme -and
+              [int]$override.'port-version' -eq [int]$entry.'port-version') { $found = $true }
+        }
+      }
+    }
+    if (-not $found) { $name }
+  }
+}
+
 function Initialize-SetupVcpkg([string]$Git, [string]$Existing) {
-  $revision = (Get-Content -LiteralPath (Join-Path $engineRoot "vcpkg.json") -Raw | ConvertFrom-Json).'builtin-baseline'
+  $manifest = Get-Content -LiteralPath (Join-Path $engineRoot "vcpkg.json") -Raw | ConvertFrom-Json
+  $revision = $manifest.'builtin-baseline'
   if ($revision -notmatch '^[0-9a-f]{40}$') { throw "vcpkg.json has no valid pinned baseline." }
   if ($Existing) { $path = $Existing } else {
     $path = Join-Path $deps "vcpkg-$($revision.Substring(0, 12))"
@@ -241,7 +260,19 @@ function Initialize-SetupVcpkg([string]$Git, [string]$Existing) {
   # A reused clone may predate the baseline required by a newer Gufo checkout.
   & $Git -C $path rev-parse --verify --quiet "${revision}^{commit}" | Out-Null
   if ($LASTEXITCODE -ne 0) { Invoke-SetupCommand $Git @("-C", $path, "fetch", "origin", $revision) }
-  if (-not (Test-Path -LiteralPath "$path\vcpkg.exe")) {
+  # Overrides can be newer than the baseline. vcpkg reads the version database
+  # from its working tree, so fetching history alone does not make them available.
+  $refresh = @(Get-MissingVcpkgOverrides $manifest $path).Count -gt 0
+  if ($refresh) {
+    $changes = & $Git -C $path status --porcelain
+    if ($LASTEXITCODE -ne 0 -or $changes) { throw "Local changes exist in $path; cannot refresh the vcpkg version database. Commit or stash them, then rerun setup/update." }
+    Write-Host "Refreshing vcpkg for Gufo's dependency overrides..." -ForegroundColor Cyan
+    Invoke-SetupCommand $Git @("-C", $path, "fetch", "origin", "HEAD")
+    Invoke-SetupCommand $Git @("-C", $path, "checkout", "--detach", "FETCH_HEAD")
+    $missing = @(Get-MissingVcpkgOverrides $manifest $path)
+    if ($missing.Count) { throw "The refreshed vcpkg registry still lacks Gufo's overrides for: $($missing -join ', '). Check upstream's vcpkg.json requirements." }
+  }
+  if ($refresh -or -not (Test-Path -LiteralPath "$path\vcpkg.exe")) {
     Invoke-SetupCommand "$path\bootstrap-vcpkg.bat" @("-disableMetrics")
   }
   if (-not (Test-Path -LiteralPath "$path\vcpkg.exe")) { throw "vcpkg bootstrap did not produce vcpkg.exe in $path." }

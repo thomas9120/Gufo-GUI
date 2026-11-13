@@ -222,6 +222,44 @@ Assert ($found -eq $vcpkgPath) 'Reused vcpkg path changed'
 Assert ($calls.Count -eq 1 -and ($calls[0] -join '|') -eq "-C|$vcpkgPath|fetch|origin|$revision") 'New baseline was not fetched'
 ''')
 
+    def test_vcpkg_refreshes_database_for_override_newer_than_baseline(self):
+        self.run_ps(r'''
+$git = (Get-Command git.exe).Source
+$origin = Join-Path $root 'registry origin'
+$vcpkgPath = Join-Path $root 'vcpkg'
+Invoke-SetupCommand $git @('init', '-b', 'main', $origin)
+New-Item -ItemType Directory -Path (Join-Path $origin 'versions/c-') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $origin 'versions/c-/curl.json') -Value '{"versions":[{"version":"8.22.0","port-version":0}]}'
+Set-Content -LiteralPath (Join-Path $origin '.gitignore') -Value "vcpkg.exe`nbootstrapped"
+Set-Content -LiteralPath (Join-Path $origin 'bootstrap-vcpkg.bat') -Value "@echo off`r`necho refreshed> `"%~dp0bootstrapped`""
+Invoke-SetupCommand $git @('-C', $origin, 'add', '.')
+Invoke-SetupCommand $git @('-C', $origin, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'baseline')
+$revision = & $git -C $origin rev-parse HEAD
+Invoke-SetupCommand $git @('clone', $origin, $vcpkgPath)
+Set-Content -LiteralPath (Join-Path $vcpkgPath 'vcpkg.exe') -Value 'fixture'
+Set-Content -LiteralPath (Join-Path $origin 'versions/c-/curl.json') -Value '{"versions":[{"version":"8.23.0","port-version":0}]}'
+Invoke-SetupCommand $git @('-C', $origin, 'add', '.')
+Invoke-SetupCommand $git @('-C', $origin, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'new curl')
+$latest = & $git -C $origin rev-parse HEAD
+New-Item -ItemType Directory -Path $engineRoot | Out-Null
+$manifest = '{"builtin-baseline":"' + $revision + '","overrides":[{"name":"curl","version":"8.23.0"}]}'
+Set-Content -LiteralPath (Join-Path $engineRoot 'vcpkg.json') -Value $manifest
+# Even fetching the new commit is insufficient: the checked-out database is old.
+Invoke-SetupCommand $git @('-C', $vcpkgPath, 'fetch', 'origin')
+Set-Content -LiteralPath (Join-Path $vcpkgPath 'local.txt') -Value 'preserve me'
+Reject { Initialize-SetupVcpkg $git $vcpkgPath } '*Local changes*'
+Assert ((& $git -C $vcpkgPath rev-parse HEAD) -eq $revision) 'Dirty checkout was moved'
+Remove-Item -LiteralPath (Join-Path $vcpkgPath 'local.txt')
+$found = Initialize-SetupVcpkg $git $vcpkgPath
+Assert ($found -eq $vcpkgPath) 'Reused vcpkg path changed'
+Assert ((& $git -C $vcpkgPath rev-parse HEAD) -eq $latest) 'Version database was not refreshed'
+Assert (Test-Path -LiteralPath (Join-Path $vcpkgPath 'bootstrapped')) 'Updated tool was not bootstrapped'
+Assert ((Get-Content -LiteralPath (Join-Path $engineRoot 'vcpkg.json')) -eq $manifest) 'Gufo manifest was changed'
+Remove-Item -LiteralPath (Join-Path $vcpkgPath 'bootstrapped')
+$null = Initialize-SetupVcpkg $git $vcpkgPath
+Assert (-not (Test-Path -LiteralPath (Join-Path $vcpkgPath 'bootstrapped'))) 'Unchanged registry was bootstrapped again'
+''')
+
     def test_build_wrapper_selects_one_cmake_when_multiple_are_on_path(self):
         source = self.root / "upstream & source"
         scripts = source / "tools/windows"
