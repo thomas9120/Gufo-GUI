@@ -38,7 +38,7 @@ class ReasoningBudgetTest(unittest.TestCase):
             self.assertEqual(resolved_settings(restored), flash)
             command = build_command(resolved_settings(restored))
             for flag, expected in [("--max-tokens", "8192"), ("--reasoning-budget", "4096"),
-                                   ("--speculative", "mtp"), ("--draft-tokens", "7")]:
+                                   ("--speculative", "mtp")]:
                 self.assertEqual(command[command.index(flag) + 1], expected)
 
     def test_budget_boundaries_match_engine_contract(self):

@@ -295,7 +295,7 @@ def describe_plan(plan, action):
     for package in plan.get("packages", []):
         detail = package.get("path") or package.get("version") or "system package"
         lines.append(f"  {package['action'].title()} {package['name']}: {detail}")
-    for key in ("rock", "vcpkg"):
+    for key in ("rock", "xrt", "vcpkg"):
         if key in plan:
             item = plan[key]
             lines.append(f"  {item['action'].title()} {key}: {item.get('path') or item.get('version', 'managed folder')}")

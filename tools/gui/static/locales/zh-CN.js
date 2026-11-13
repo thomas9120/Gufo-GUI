@@ -1,5 +1,16 @@
 // English source strings remain the fallback. Placeholders are inserted as text.
 export const messages = {
+  "DSpark support model": "DSpark \u8f85\u52a9\u6a21\u578b",
+  "Choose DSpark support model": "\u9009\u62e9 DSpark \u8f85\u52a9\u6a21\u578b",
+  "Disable RAM continuation cache": "\u7981\u7528 RAM \u7eed\u5199\u7f13\u5b58",
+  "Choose the mode for your main model and a matching draft file. Flash-Next uses MTP; Qwen3.8-27B uses DFlash2; DeepSeek V4 Flash uses DSpark.": "\u9009\u62e9\u4e3b\u6a21\u578b\u7684\u6a21\u5f0f\u548c\u5339\u914d\u7684\u8349\u7a3f\u6587\u4ef6\u3002Flash-Next \u4f7f\u7528 MTP\uff1bQwen3.8-27B \u4f7f\u7528 DFlash2\uff1bDeepSeek V4 Flash \u4f7f\u7528 DSpark\u3002",
+  "Auto uses the model default. Clients can override the level per request. The level is ignored while Thinking is Off.": "Auto \u4f7f\u7528\u6a21\u578b\u9ed8\u8ba4\u503c\u3002\u5ba2\u6237\u7aef\u53ef\u9010\u8bf7\u6c42\u8986\u76d6\u3002\u5173\u95ed\u601d\u8003\u65f6\u5ffd\u7565\u6b64\u9009\u9879\u3002",
+  "Auto follows the model default. On keeps reasoning supplied by your client in later prompts. Independent of generating new thoughts. Chat Completions clients can override this per request.": "Auto \u9075\u5faa\u6a21\u578b\u9ed8\u8ba4\u503c\u3002\u5f00\u542f\u540e\u5728\u540e\u7eed\u63d0\u793a\u4e2d\u4fdd\u7559\u5ba2\u6237\u7aef\u63d0\u4f9b\u7684\u63a8\u7406\u3002\u6b64\u9009\u9879\u4e0e\u751f\u6210\u65b0\u601d\u8003\u65e0\u5173\u3002Chat Completions \u5ba2\u6237\u7aef\u53ef\u9010\u8bf7\u6c42\u8986\u76d6\u3002",
+  "Disk cache, sessions and repetition penalties": "\u78c1\u76d8\u7f13\u5b58\u3001\u4f1a\u8bdd\u6570\u548c\u91cd\u590d\u60e9\u7f5a",
+  "DeepSeek V4 Flash": "DeepSeek V4 Flash",
+  "DSpark": "DSpark",
+  "DSpark needs a matching DeepSeek V4 Flash support model. Text only; Gufo checks compatibility when loading.": "DSpark \u9700\u8981\u5339\u914d\u7684 DeepSeek V4 Flash \u8f85\u52a9\u6a21\u578b\u3002\u4ec5\u652f\u6301\u6587\u672c\uff1bGufo \u5728\u52a0\u8f7d\u65f6\u68c0\u67e5\u517c\u5bb9\u6027\u3002",
+
   "Loaded model": "已加载模型",
   "Build revision": "构建版本",
   "Context per session": "每个会话的上下文",

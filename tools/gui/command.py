@@ -23,6 +23,8 @@ def build_command(values, *, check_files=False):
             check_gguf(settings["mmproj"], "Vision projector")
         if settings["speculative"] == "mtp":
             check_gguf(settings["mtp_model"], "MTP sidecar")
+        elif settings["speculative"] == "dspark":
+            check_gguf(settings["dspark_model"], "DSpark support model")
         elif settings["speculative"] == "dflash2":
             check_gguf(settings["dflash_model"], "DFlash2 draft")
         if settings["cache_disk"]:
@@ -36,8 +38,10 @@ def build_command(values, *, check_files=False):
         command.extend(["--" + key.replace("_", "-"), str(settings[key])])
     if settings["reasoning_budget"] >= 0:
         command.extend(["--reasoning-budget", str(settings["reasoning_budget"])])
-    command.extend(["--preserve-thinking", "on" if settings["preserve_thinking"] else "off"])
-    if settings["cache_ram_gib"]:
+    command.extend(["--preserve-thinking", settings["preserve_thinking"]])
+    if settings["cache_ram_off"]:
+        command.extend(["--cache-ram-bytes", "off"])
+    elif settings["cache_ram_gib"]:
         command.extend(["--cache-ram-bytes", str(settings["cache_ram_gib"] * 1024**3)])
     if settings["cache_disk"]:
         command.extend(["--cache-disk", settings["cache_disk_dir"],
@@ -49,8 +53,9 @@ def build_command(values, *, check_files=False):
         command.extend(["--mmproj", settings["mmproj"]])
     command.extend(["--speculative", settings["speculative"]])
     if settings["speculative"] == "mtp":
-        for key in ("mtp_model", "draft_tokens"):
-            command.extend(["--" + key.replace("_", "-"), str(settings[key])])
+        command.extend(["--mtp-model", settings["mtp_model"]])
+    elif settings["speculative"] == "dspark":
+        command.extend(["--dspark-model", settings["dspark_model"]])
     elif settings["speculative"] == "dflash2":
         command.extend(["--dflash-model", settings["dflash_model"]])
     return command

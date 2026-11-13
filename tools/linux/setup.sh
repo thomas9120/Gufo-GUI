@@ -55,6 +55,8 @@ print_setup_plan() {
   else
     printf '  ROCm: not found. Upstream qualifies ROCm 7.2.3 with hipBLAS, hipBLASLt, rocBLAS, hipCUB, rocPRIM and rocWMMA.\n'
   fi
+  printf '  Rust/Cargo 1.88+ (rustup) and XRT with amdxdna must be installed separately; see README.md.\n'
+  printf '  XRT SDK: %s\n' "${xrt_dir:-not found; install manually}"
   printf '  Build Gufo (%s preset), verify GPU startup, prepare the GUI. Existing GUI settings are preserved.\n' "$preset"
 }
 
@@ -85,6 +87,7 @@ run_linux_setup() {
     return 0
   fi
   require_rocm
+  require_engine_toolchains
   if (( ${#missing_system[@]} )) && (( ! ${#package_manager[@]} )); then
     die "Install the missing tools listed above with your package manager, then rerun setup-linux.sh."
   fi

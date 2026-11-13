@@ -38,6 +38,7 @@ run_linux_update() {
   installer_phase inspect
   resolve_engine_root "$gufo_path"
   detect_setup_tools "$rocm"
+  require_engine_toolchains
   [[ -n $rocm_path ]] || missing_system+=("ROCm development files")
   if (( ${#missing_system[@]} )); then
     die "Build prerequisites are missing ($(join_list "${missing_system[@]}")). Run setup-linux.sh first."

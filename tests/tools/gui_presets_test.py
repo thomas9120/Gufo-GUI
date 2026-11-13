@@ -67,11 +67,11 @@ class PresetsTest(unittest.TestCase):
             path.write_bytes(original)
             document = load_document(path)
             values = resolved_settings(document)
-            self.assertTrue(values["preserve_thinking"])
+            self.assertEqual(values["preserve_thinking"], "auto")
             self.assertFalse(values["cache_disk"])
             self.assertEqual(values["cache_ram_gib"], 0)
             self.assertEqual(path.read_bytes(), original)
-            changed = values | {"preserve_thinking": False, "cache_ram_gib": 2, "cache_disk": True,
+            changed = values | {"preserve_thinking": "off", "cache_ram_gib": 2, "cache_disk": True,
                                 "cache_disk_dir": str(Path(directory) / "cache"),
                                 "cache_disk_gib": 16, "cache_disk_staging_gib": 8}
             document = self.change(document, action="create", name="Disk cache", settings=changed)

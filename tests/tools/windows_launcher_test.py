@@ -18,6 +18,27 @@ def quote(value):
 
 @unittest.skipUnless(os.name == "nt", "Windows scripts require Windows")
 class WindowsLauncherTest(unittest.TestCase):
+    def test_xrt_download_is_verified_and_reuses_managed_sdk(self):
+        self.run_ps(r'''
+$calls = [Collections.Generic.List[object]]::new()
+function Get-VerifiedDownload($Url, $Destination, $Sha256) { $calls.Add(@($Url, $Destination, $Sha256)) }
+function Invoke-SetupCommand($File, $Arguments) {
+  $config = Join-Path $Arguments[3] 'xrt_sdk/xrt/share/cmake/XRT'
+  New-Item -ItemType Directory -Force -Path $config | Out-Null
+  Set-Content -LiteralPath (Join-Path $config 'XRTConfig.cmake') -Value '# fixture'
+}
+$config = Install-SetupXrt
+Assert ($calls[0][0] -eq 'https://github.com/Xilinx/XRT/releases/download/2.21.75/xrt_windows_sdk.zip') 'Wrong SDK'
+Assert ($calls[0][2] -eq 'ccc244c2c423588972ade76142cdc01049477aaa39a35be97e782b97eb7c5295') 'Missing SDK hash'
+Assert (Test-Path -LiteralPath (Join-Path $config 'XRTConfig.cmake')) 'No SDK configuration'
+function Find-VisualStudio { return '' }
+function Find-Program { return '' }
+function Test-WindowsSdk { return $false }
+Save-SetupTools ([pscustomobject]@{Xrt=$config})
+$tools = Get-SetupTools
+Assert ([IO.Path]::GetFullPath($tools.Xrt) -eq [IO.Path]::GetFullPath($config)) "Managed SDK was not rediscovered: actual=$($tools.Xrt), expected=$config"
+''')
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="gufo launcher & spaces ")
         self.addCleanup(self.temporary.cleanup)
@@ -93,7 +114,7 @@ function Assert-SetupSpace { }
 function Assert-EngineStopped { }
 function Get-SetupTools {
   [pscustomobject]@{Git='C:\tools\git.exe'; VS='C:\vs'; CMake='C:\tools\cmake.exe';
-    Ninja='C:\tools\ninja.exe'; Python='C:\python\python.exe'; Rocm='C:\rock'; Vcpkg='C:\vcpkg'; GufoPath=$engineRoot}
+    Ninja='C:\tools\ninja.exe'; Python='C:\python\python.exe'; Rust='C:\cargo\rustc.exe'; Xrt='C:\xrt'; Rocm='C:\rock'; Vcpkg='C:\vcpkg'; GufoPath=$engineRoot}
 }
 function Initialize-GufoSource { $events.Add('clone') }
 function Initialize-SetupVcpkg { $events.Add('vcpkg'); return 'C:\vcpkg' }
@@ -130,7 +151,7 @@ Set-Content -LiteralPath (Join-Path $vcpkgPath 'vcpkg.exe') -Value 'fixture'
 $events = [Collections.Generic.List[object]]::new()
 function Get-SetupTools {
   [pscustomobject]@{Git='C:\tools\git.exe'; VS='C:\vs'; CMake='C:\tools\cmake.exe';
-    Ninja='C:\tools\ninja.exe'; Python='C:\python\python.exe'; Rocm='C:\rock'; Vcpkg=$vcpkgPath; GufoPath=$engineRoot}
+    Ninja='C:\tools\ninja.exe'; Python='C:\python\python.exe'; Rust='C:\cargo\rustc.exe'; Xrt='C:\xrt'; Rocm='C:\rock'; Vcpkg=$vcpkgPath; GufoPath=$engineRoot}
 }
 function Assert-EngineStopped { }
 function Assert-GufoSource { }
@@ -162,7 +183,7 @@ Assert ($events.Count -eq 0) 'Build continued after failed pull'
         shell = tools / "fake powershell.cmd"
         shell.write_text('@echo off\nexit /b 0\n')
         environment = self.environment | {"GUFO_VCVARS": str(vcvars), "GUFO_CMAKE": str(cmake),
-                                          "GUFO_NINJA": str(tools / "ninja.exe"), "GUFO_BUILD_JOBS": "3", "TEST_LOG": str(log),
+                                          "XRT_DIR": str(tools / "XRT"), "GUFO_NINJA": str(tools / "ninja.exe"), "GUFO_BUILD_JOBS": "3", "TEST_LOG": str(log),
                                           "HIP_PATH": "selected HIP", "VCPKG_ROOT": "selected vcpkg"}
         environment.update(GUFO_POWERSHELL=str(shell), GUFO_BUILD_DIR=str(tools))
         def run():
@@ -172,7 +193,7 @@ Assert ($events.Count -eq 0) 'Build continued after failed pull'
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = [json.loads(line) for line in log.read_text().splitlines()]
         self.assertEqual(calls, [["--preset", "windows-release",
-                                 "-DCMAKE_MAKE_PROGRAM=" + environment["GUFO_NINJA"], "-DGUFO_ENABLE_WARNINGS=OFF"],
+                                 "-DCMAKE_MAKE_PROGRAM=" + environment["GUFO_NINJA"], "-DXRT_DIR=" + environment["XRT_DIR"], "-DGUFO_ENABLE_WARNINGS=OFF"],
                                 ["--build", "--preset", "windows-release", "--target", "gufo", "--parallel", "3"]])
         environment["TEST_FAIL"] = "7"
         self.assertEqual(run().returncode, 7)
@@ -187,7 +208,7 @@ $vcpkgPath = Join-Path $root 'vcpkg'
 New-Item -ItemType Directory -Path $vcpkgPath | Out-Null
 Set-Content -LiteralPath (Join-Path $vcpkgPath 'vcpkg.exe') -Value 'fixture'
 function Get-SetupTools {
-  [pscustomobject]@{Git='git.exe'; VS='vs'; CMake='cmake'; Ninja='ninja'; Python='python'; Rocm='rock'; Vcpkg=$vcpkgPath}
+  [pscustomobject]@{Git='git.exe'; VS='vs'; CMake='cmake'; Ninja='ninja'; Python='python'; Rust='C:\cargo\rustc.exe'; Xrt='C:\xrt'; Rocm='rock'; Vcpkg=$vcpkgPath}
 }
 function Assert-EngineStopped { }
 function Assert-GufoSource { }

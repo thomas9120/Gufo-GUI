@@ -1,18 +1,26 @@
 """Curated UI families, not a claim of compatibility with a selected artifact."""
 
-REASONING_LEVELS = ("auto", "low", "medium", "xhigh")
+REASONING_LEVELS = ("auto", "minimal", "low", "medium", "high", "xhigh", "max")
 SPECULATIVE_MODES = {
     "off": {"label": "Off", "file_field": None, "options_id": None},
-    "mtp": {"label": "MTP", "file_field": "mtp_model", "options_id": "mtp-options"},
+    "mtp": {"label": "MTP", "file_field": "mtp_model", "options_id": None},
+    "dspark": {"label": "DSpark", "file_field": "dspark_model", "options_id": None},
     "dflash2": {"label": "DFlash2", "file_field": "dflash_model", "options_id": None},
 }
 MODEL_FAMILIES = {
     "generic": {
         "label": "Other / existing configuration",
-        "speculative": ("off", "mtp", "dflash2"),
+        "speculative": ("off", "mtp", "dflash2", "dspark"),
         "reasoning_effort": REASONING_LEVELS,
         "defaults": {},
         "hint": "Choose options supported by your model. Gufo checks artifact compatibility when loading.",
+    },
+    "deepseek_v4_flash": {
+        "label": "DeepSeek V4 Flash",
+        "speculative": ("off", "dspark"),
+        "reasoning_effort": REASONING_LEVELS,
+        "defaults": {"think": "auto", "reasoning_effort": "auto"},
+        "hint": "DSpark needs a matching DeepSeek V4 Flash support model. Text only; Gufo checks compatibility when loading.",
     },
     "qwen38_flash_next": {
         "label": "Qwen3.8-Flash-Next",
