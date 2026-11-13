@@ -46,8 +46,10 @@ On later runs, choose **Launch Gufo-GUI** in Setup or double-click
 **Stop** unloads the engine; **Exit** closes both the launcher and its engine.
 
 Setup installs missing Git, Visual Studio C++ Build Tools/Windows SDK, CMake,
-Ninja and 64-bit Python using WinGet. It reuses suitable existing tools. The first
-run also downloads the verified TheRock 10.0.0 SDK and prepares a full vcpkg clone.
+Ninja, Rust (via rustup), and 64-bit Python using WinGet. It reuses suitable existing tools. The first
+run also downloads the verified TheRock 10.0.0 and XRT 2.21.75 SDKs and prepares a full vcpkg clone.
+Rustup selects Gufo's pinned Rust toolchain during the build. The XRT SDK supplies
+build headers and libraries; the NPU runtime comes from AMD's driver.
 Downloads and completed build steps are reused when setup is rerun.
 The SDK comes from the mirror documented by upstream because AMD's index no
 longer serves this version. Setup verifies its pinned SHA-256 before extracting it.
@@ -183,6 +185,15 @@ ROCm using
 (upstream qualifies ROCm 7.2.3), including the hipBLAS, hipBLASLt, rocBLAS, hipCUB,
 rocPRIM and rocWMMA development packages. Add your user to the `render` and
 `video` groups, then log out and back in.
+
+Install **Rust/Cargo 1.88+ through [rustup](https://rustup.rs)** and **XRT with
+the amdxdna plugin** before setup or engine updates. Follow the
+[upstream Linux prerequisites](https://github.com/gufo-org/gufo/blob/main/docs/install.md)
+for XRT installation. Setup checks its CMake configuration under
+`/opt/xilinx/xrt/share/cmake/XRT`, `$XILINX_XRT/share/cmake/XRT`, or `$XRT_DIR`.
+For a custom installation, export `XRT_DIR` before launching Setup.
+Linux setup installs libopus development files with the other system dependencies;
+libsndfile and soxr are no longer required. Rust and XRT must be installed separately.
 
 ### First-time setup on Linux
 

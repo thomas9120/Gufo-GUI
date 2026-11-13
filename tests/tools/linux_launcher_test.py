@@ -37,6 +37,20 @@ export GUFO_INSTALLER_EVENTS=1
 [[ $(installer_phase build) == 'GUFO_EVENT {"schema":1,"phase":"build"}' ]] || fail 'Invalid event'
 ''', script="update.sh")
 
+    def test_toolchain_preflight_requires_rust_and_accepts_custom_xrt(self):
+        self.run_bash(f"test_root=$root; source {shlex.quote(str(ROOT / 'tools/linux/common.sh'))}; root=$test_root\n" + r'''
+rustc_bin='' cargo_bin=''
+reject '*Install Rust/Cargo*' require_engine_toolchains
+rustc_bin=/tools/rustc cargo_bin=/tools/cargo
+export XRT_DIR="$root/custom XRT/share/cmake/XRT"
+mkdir -p "$XRT_DIR"
+touch "$XRT_DIR/XRTConfig.cmake"
+require_engine_toolchains
+[[ $xrt_dir == "$XRT_DIR" ]] || fail 'Custom XRT was ignored'
+[[ " ${pkg_modules[*]} " == *' opus '* ]] || fail 'Missing opus dependency'
+[[ " ${pkg_modules[*]} " != *' sndfile '* ]] || fail 'Retired dependency'
+''')
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="gufo launcher & spaces ")
         self.addCleanup(self.temporary.cleanup)
@@ -50,6 +64,7 @@ export GUFO_INSTALLER_EVENTS=1
             "engine_root=\"$root/official & engine\"\n"
             "engine=\"$engine_root/build/release/gufo\"\n"
             "state_file=\"$root/build/linux-setup.json\"\n"
+            "require_engine_toolchains() { xrt_dir=/test/xrt; cargo_bin=/usr/bin/cargo; rustc_bin=/usr/bin/rustc; }\n"
             "fail() { printf 'ASSERTION: %s\\n' \"$*\" >&2; exit 99; }\n"
             "reject() {  # reject PATTERN COMMAND...\n"
             "  local pattern=$1 output; shift\n"
@@ -177,7 +192,7 @@ reject '*prerequisites are missing (ROCm*setup-linux.sh*' run_linux_update
         calls = [json.loads(line) for line in log.read_text().splitlines()]
         source = str(self.root / "official & engine")
         self.assertEqual(calls, [[source, "--preset", "release", "-DCMAKE_MAKE_PROGRAM=/tools/ninja",
-                                  "-DGUFO_ENABLE_WARNINGS=OFF", f"-DCMAKE_PREFIX_PATH={rocm}",
+                                  "-DGUFO_ENABLE_WARNINGS=OFF", f"-DCMAKE_PREFIX_PATH={rocm}", "-DXRT_DIR=/test/xrt",
                                   f"-DCMAKE_HIP_COMPILER={compiler}"],
                                  [source, "--build", "--preset", "release", "--target", "gufo", "--parallel", "3"]])
         log.unlink()

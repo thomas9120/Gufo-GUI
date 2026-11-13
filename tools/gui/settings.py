@@ -10,7 +10,7 @@ from models import MODEL_FAMILIES, REASONING_LEVELS, SPECULATIVE_MODES, validate
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PATH_FIELDS = ("executable", "models_dir", "model", "mtp_model", "dflash_model", "mmproj", "cache_disk_dir")
+PATH_FIELDS = ("executable", "models_dir", "model", "mtp_model", "dflash_model", "dspark_model", "mmproj", "cache_disk_dir")
 
 
 def default_executable():
@@ -41,14 +41,16 @@ DEFAULTS = {
     "model_family": "generic",
     "mtp_model": "",
     "dflash_model": "",
+    "dspark_model": "",
     "mmproj": "",  # Empty means engine auto-discovery, not disabled vision.
     "context": 32768,
     "max_tokens": 2048,
     "reasoning_budget": -1,
     "think": "on",
     "reasoning_effort": "auto",
-    "preserve_thinking": True,
+    "preserve_thinking": "auto",
     "cache_ram_gib": 0,
+    "cache_ram_off": False,
     "cache_disk": False,
     "cache_disk_dir": str(Path(os.environ["LOCALAPPDATA"]) / "Gufo" / "cache"
                           if os.environ.get("LOCALAPPDATA") else Path.home() / ".cache" / "gufo"),
@@ -68,14 +70,12 @@ DEFAULTS = {
     "frequency_penalty": 0.0,
     "presence_penalty": 0.0,
     "speculative": "off",
-    "draft_tokens": 7,
 }
 INTEGER_LIMITS = {
     "context": (0, 2**32 - 1), "max_tokens": (-1, 2**32 - 1),
     "reasoning_budget": (-1, 2**31 - 1),
     "port": (1, 65535), "sessions": (1, 64), "top_k": (0, 2**31 - 1),
     "seed": (-1, 2**53 - 1), "repeat_last_n": (0, 2**32 - 1),
-    "draft_tokens": (1, 7),
     "cache_ram_gib": (0, 65536),
     "cache_disk_gib": (1, 65536), "cache_disk_staging_gib": (0, 65536),
 }
@@ -85,11 +85,12 @@ FLOAT_LIMITS = {
     "presence_penalty": (-2, 2),
 }
 ENUMS = {"model_family": tuple(MODEL_FAMILIES), "think": ("auto", "on", "off"),
-         "reasoning_effort": REASONING_LEVELS, "speculative": tuple(SPECULATIVE_MODES)}
+         "reasoning_effort": REASONING_LEVELS, "speculative": tuple(SPECULATIVE_MODES),
+         "preserve_thinking": ("auto", "on", "off")}
 
 # Fields older launchers saved; validate_settings migrates or ignores them.
 LEGACY_FIELDS = {"mtp", "mtp_policy", "mtp_draft_vocab", "prompt_lookup",
-                 "debug_tool_calls"}
+                 "debug_tool_calls", "draft_tokens"}
 
 
 def settings_path():
@@ -102,7 +103,7 @@ def validate_settings(values):
         raise ValueError("Settings must contain only the supported launcher fields.")
     # Options from the Windows-fork launcher that this engine does not expose
     # are ignored without rewriting saved settings on load.
-    retired = {"mtp_policy", "mtp_draft_vocab", "prompt_lookup", "debug_tool_calls"}
+    retired = {"mtp_policy", "mtp_draft_vocab", "prompt_lookup", "debug_tool_calls", "draft_tokens"}
     if retired & values.keys():
         values = {key: value for key, value in values.items() if key not in retired}
     # Migrate the original MTP checkbox without rewriting saved settings on load.
@@ -112,6 +113,8 @@ def validate_settings(values):
         if type(mtp) is not bool:
             raise ValueError("mtp: expected a checkbox value.")
         values.setdefault("speculative", "mtp" if mtp else "off")
+    if type(values.get("preserve_thinking")) is bool:
+        values = values | {"preserve_thinking": "on" if values["preserve_thinking"] else "off"}
     result = DEFAULTS | values
     for key, default in DEFAULTS.items():
         value = result[key]

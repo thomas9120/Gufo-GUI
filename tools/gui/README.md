@@ -15,8 +15,9 @@ Older presets retain unlimited thinking until a budget is explicitly saved.
 
 1. Choose a models folder and select a main GGUF. Browse subfolders or paste
    an absolute path. For split models, select the first shard.
-2. Choose a model family and speculative mode: Off, MTP for Flash-Next, or
-   DFlash2 for Qwen3.8-27B. Select the matching MTP sidecar or DFlash2 draft.
+2. Choose a model family and speculative mode: Off, MTP for Flash-Next,
+   DFlash2 for Qwen3.8-27B, or DSpark for DeepSeek V4 Flash. Select the matching
+   sidecar, draft, or support model.
    The family describes GUI choices; the engine checks actual compatibility.
 3. Optionally select a vision projector. A blank path leaves auto-discovery
    to the engine. An incompatible projector can fail during model loading.
@@ -36,7 +37,7 @@ The launcher listens only on localhost at port 8090. Changing the engine's
 API bind address to `0.0.0.0` permits LAN access; clients use the PC's LAN
 address and Windows Firewall must allow the API port. This GUI does not
 configure API authentication. See the upstream
-[server documentation](https://github.com/gufo-org/gufo/blob/main/docs/SERVER.md).
+[server documentation](https://github.com/gufo-org/gufo/blob/main/docs/server.md).
 Use different ports for the engine and GUI.
 
 Settings and named presets are saved explicitly in
@@ -58,8 +59,15 @@ the engine's latest nonzero measured processing speeds. Upstream's cumulative
 prefill-time counter updates at request completion and cannot measure live
 processing speed while a request is still running.
 
-More options exposes sessions, penalties, continuation cache settings and MTP
-draft limits. Optional controls depend on engine support. Disk caching is off
+Reasoning effort accepts Auto, minimal, low, medium, high, xhigh and max;
+Gufo maps these levels to the selected model's capabilities. Preserve reasoning
+offers Auto (model default), On and Off. Existing presets' checkbox values
+migrate to On or Off. RAM caching can be disabled explicitly, sized automatically
+(0 GiB), or given a positive size; disk caching remains independent.
+
+More options exposes sessions, penalties and continuation cache settings.
+Gufo manages draft lengths automatically; retired draft-token preset values are
+ignored without rewriting the preset on load. Disk caching is off
 by default. Start checks filesystem paths, GGUF magic, split-file presence
 and numeric inputs; it cannot guarantee model compatibility or available VRAM.
 The command preview shows the native argument list. Logs retain 300 lines.

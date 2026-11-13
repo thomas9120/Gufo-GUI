@@ -16,7 +16,7 @@ function Invoke-WindowsUpdate {
   Write-InstallerPhase "inspect"
   $tools = Get-SetupTools
   if ($Ninja) { $tools.Ninja = (Get-Command $Ninja -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source }
-  $missing = @(@("Git", "VS", "CMake", "Ninja", "Python", "Rocm", "Vcpkg") | Where-Object { -not $tools.$_ })
+  $missing = @(@("Git", "VS", "CMake", "Ninja", "Python", "Rust", "Xrt", "Rocm", "Vcpkg") | Where-Object { -not $tools.$_ })
   if ($missing.Count -or -not (Test-Path -LiteralPath "$($tools.Vcpkg)\vcpkg.exe")) {
     throw "Build prerequisites are missing ($($missing -join ', ')). Run setup-windows.bat first."
   }
@@ -34,6 +34,8 @@ function Invoke-WindowsUpdate {
   Write-InstallerPhase "dependencies"
   $tools.Vcpkg = Initialize-SetupVcpkg $tools.Git $tools.Vcpkg
   Save-SetupTools $tools
+  $env:XRT_DIR = $tools.Xrt
+  $env:PATH = "$(Split-Path $tools.Rust);$env:PATH"
   $env:PATH = "$(Split-Path $tools.Git);$(Split-Path $tools.CMake);$(Split-Path $tools.Ninja);$(Split-Path $tools.Python);$env:PATH"
   $shell = (Get-Process -Id $PID).Path
   Write-InstallerPhase "build"

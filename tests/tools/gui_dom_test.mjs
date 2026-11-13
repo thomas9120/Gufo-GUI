@@ -190,7 +190,7 @@ test("restoring a preset keeps sidecars; changing its model clears them", async 
   form.apply(values);
   assert.equal(form.values().mtp_model, values.mtp_model);
   assert.equal(form.values().mmproj, values.mmproj);
-  assert.equal(env.$("mtp-options").hidden, false);
+  assert.equal(env.$("draft_tokens"), null);
   edit(env, "model_family", "qwen38_27b");
   assert.equal(form.values().speculative, "off");
   assert.equal(form.values().temperature, 0.42);
@@ -228,14 +228,14 @@ test("reasoning preservation and disk caching restore independently of thinking"
   const { createSettingsForm } = await env.use("settings-form.js");
   const { settings, families, modes } = env.initial;
   const form = createSettingsForm(settings, families, modes, () => {});
-  assert.equal(env.$("preserve_thinking").checked, true);
+  assert.equal(env.$("preserve_thinking").value, "auto");
   assert.equal(env.$("cache_disk").checked, false);
   assert.equal(env.$("disk-cache-options").disabled, true);
   edit(env, "think", "off");
   assert.equal(env.$("preserve_thinking").disabled, false);
-  env.$("preserve_thinking").click();
+  edit(env, "preserve_thinking", "off");
   env.$("cache_disk").click();
-  assert.equal(form.values().preserve_thinking, false);
+  assert.equal(form.values().preserve_thinking, "off");
   assert.equal(form.values().cache_disk, true);
   assert.equal(env.$("disk-cache-options").disabled, false);
   edit(env, "cache_disk_dir", "");
@@ -245,10 +245,10 @@ test("reasoning preservation and disk caching restore independently of thinking"
   const cached = form.values();
   form.apply(settings);
   assert.equal(env.$("disk-cache-options").disabled, true);
-  assert.equal(env.$("preserve_thinking").checked, true);
+  assert.equal(env.$("preserve_thinking").value, "auto");
   form.apply(cached);
   assert.equal(form.values().cache_disk_staging_gib, 8);
-  assert.equal(env.$("preserve_thinking").checked, false);
+  assert.equal(env.$("preserve_thinking").value, "off");
   assert.equal(env.$("disk-cache-options").disabled, false);
 });
 
@@ -460,4 +460,29 @@ test("RAM snapshot cap stays editable without disk caching and follows form sett
   assert.equal(env.$("cache_ram_gib").value, "4");
   edit(env, "cache_ram_gib", "-1");
   assert.throws(() => form.valid());
+});
+
+
+test("DSpark, reasoning levels and RAM off survive form restoration", async (t) => {
+  const env = await setup(t);
+  const { createSettingsForm } = await env.use("settings-form.js");
+  const { settings, families, modes } = env.initial;
+  const form = createSettingsForm(settings, families, modes, () => {});
+  const values = { ...settings, model_family: "deepseek_v4_flash", speculative: "dspark",
+    dspark_model: "C:/models/support.gguf", reasoning_effort: "max", cache_ram_off: true, cache_ram_gib: 8 };
+  form.apply(values);
+  assert.equal(env.window.document.querySelector('[data-speculative-file="dspark_model"]').hidden, false);
+  assert.equal(form.values().dspark_model, values.dspark_model);
+  assert.equal(env.$("dspark_model-filename").textContent, "support.gguf");
+  assert.equal(env.$("reasoning_effort").value, "max");
+  assert.equal(env.$("cache_ram_gib").disabled, true);
+  assert.equal(form.values().cache_ram_gib, 8);
+  env.$("cache_ram_off").click();
+  assert.equal(env.$("cache_ram_gib").disabled, false);
+  edit(env, "model", "C:/models/other.gguf");
+  assert.equal(form.values().dspark_model, "");
+  assert.equal(form.values().speculative, "off");
+  form.apply(values);
+  edit(env, "model_family", "qwen38_27b");
+  assert.equal(form.values().speculative, "off");
 });

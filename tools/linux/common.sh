@@ -8,7 +8,7 @@ preset="release"
 stop_label="Setup"
 rocm_cmake_packages=(hip hipblas hipblaslt rocblas)
 rocm_headers=(hipcub/hipcub.hpp rocprim/rocprim.hpp rocwmma/rocwmma.hpp)
-pkg_modules=(icu-uc icu-i18n libcurl openssl libpng libjpeg libwebp sndfile soxr)
+pkg_modules=(icu-uc icu-i18n libcurl openssl libpng libjpeg libwebp opus)
 
 if [[ -t 1 ]]; then color_info=$'\e[36m' color_good=$'\e[32m' color_bad=$'\e[31m' color_off=$'\e[0m'
 else color_info="" color_good="" color_bad="" color_off=""; fi
@@ -27,7 +27,7 @@ write_setup_plan() {
   # No Python dependency on a first-time plain setup unless JSON is requested.
   [[ -n ${plan_json:-} ]] || return 0
   [[ -n $python_bin ]] || die "Python 3.10+ is required to export a JSON plan."
-  "$python_bin" -I - "$plan_json" "$root" "$engine_root" "$repository" "$jobs" "$rocm_path" \
+  GUFO_SETUP_XRT_DIR="${xrt_dir:-}" "$python_bin" -I - "$plan_json" "$root" "$engine_root" "$repository" "$jobs" "$rocm_path" \
     "$git_bin" "$cmake_bin" "$ninja_bin" "$cxx_bin" "$pkg_config_bin" "$python_bin" \
     "$(join_list "${missing_system[@]}")" "${package_manager[0]:-}" "${system_packages[*]}" <<'EOF' || die "Cannot write setup plan."
 import json, os, pathlib, sys
@@ -38,6 +38,8 @@ plan = dict(schema=1, root=root, gufoPath=engine, repository=repository, jobs=in
                       for name, value in zip(("Git", "CMake", "Ninja", "C++ compiler", "pkg-config", "Python"), tools)],
             missing=missing.split(", ") if missing else [],
             rock=dict(path=rocm, action="reuse" if rocm else "install manually"),
+            xrt=dict(path=os.environ.get("GUFO_SETUP_XRT_DIR", ""),
+                     action="reuse" if os.environ.get("GUFO_SETUP_XRT_DIR") else "install manually"),
             requiresSudo=bool(missing) and os.geteuid() != 0,
             systemPackages=packages.split() if missing else [], packageManager=manager)
 destination = pathlib.Path(path)
@@ -86,7 +88,7 @@ EOF
 save_setup_state() {
   mkdir -p -- "$(dirname -- "$state_file")" || die "Cannot create $(dirname -- "$state_file")."
   "${python_bin:-python3}" -I - "$state_file" GufoPath "$engine_root" Git "$git_bin" CMake "$cmake_bin" \
-    Ninja "$ninja_bin" Python "$python_bin" Rocm "$rocm_path" <<'EOF' || die "Cannot write $state_file."
+    Ninja "$ninja_bin" Python "$python_bin" Rocm "$rocm_path" Xrt "${xrt_dir:-}" <<'EOF' || die "Cannot write $state_file."
 import json, os, sys
 path, pairs = sys.argv[1], sys.argv[2:]
 with open(path + ".tmp", "w", encoding="utf-8") as file:
@@ -155,6 +157,9 @@ detect_setup_tools() {
   ninja_bin=$(find_program 1.10 "$(saved_value Ninja)" ninja ninja-build) || ninja_bin=""
   cxx_bin=$(find_program 11 "${CXX:-}" c++ g++ clang++) || cxx_bin=""
   pkg_config_bin=$(find_program 0.2 pkg-config pkgconf) || pkg_config_bin=""
+  rustc_bin=$(find_program 1.88 "${CARGO_HOME:-$HOME/.cargo}/bin/rustc" rustc) || rustc_bin=""
+  cargo_bin=$(find_program 1.88 "${CARGO_HOME:-$HOME/.cargo}/bin/cargo" cargo) || cargo_bin=""
+  xrt_dir=$(find_xrt_config) || xrt_dir=""
   python_bin=$(find_python "$(saved_value Python)" "$root/build/gui-env/bin/python" python3 \
     python3.14 python3.13 python3.12 python3.11 python3.10) || python_bin=""
   missing_system=()
@@ -163,6 +168,7 @@ detect_setup_tools() {
   [[ -n $ninja_bin ]] || missing_system+=("Ninja 1.10+")
   [[ -n $cxx_bin ]] || missing_system+=("C++20 compiler")
   [[ -n $pkg_config_bin ]] || missing_system+=("pkg-config")
+  [[ -n $rustc_bin && -n $cargo_bin ]] || missing_system+=("Rust/Cargo 1.88+ (install with rustup)")
   if [[ -z $python_bin ]]; then missing_system+=("64-bit Python 3.10+")
   elif ! "$python_bin" -I -c "import ensurepip, venv" 2>/dev/null; then missing_system+=("Python venv support")
   fi
@@ -190,17 +196,17 @@ detect_package_manager() {
   if command -v apt-get >/dev/null; then
     package_manager=(apt-get install -y)
     system_packages=(build-essential cmake ninja-build pkg-config git python3 python3-venv libicu-dev
-      libcurl4-openssl-dev libssl-dev libpng-dev libjpeg-dev libwebp-dev libsndfile1-dev libsoxr-dev ffmpeg)
+      libcurl4-openssl-dev libssl-dev libpng-dev libjpeg-dev libwebp-dev libopus-dev ffmpeg)
     rocm_packages="hipblas-dev hipblaslt-dev rocblas-dev hipcub-dev rocprim-dev rocwmma-dev"
   elif command -v dnf >/dev/null; then
     package_manager=(dnf install -y)
     system_packages=(gcc-c++ cmake ninja-build pkgconf-pkg-config git python3 libicu-devel libcurl-devel
-      openssl-devel libpng-devel libjpeg-turbo-devel libwebp-devel libsndfile-devel soxr-devel ffmpeg-free)
+      openssl-devel libpng-devel libjpeg-turbo-devel libwebp-devel opus-devel ffmpeg-free)
     rocm_packages="rocm-hip-devel hipblas-devel hipblaslt-devel rocblas-devel hipcub-devel rocprim-devel rocwmma-devel"
   elif command -v pacman >/dev/null; then
     package_manager=(pacman -S --needed --noconfirm)
     system_packages=(base-devel cmake ninja pkgconf git python icu curl openssl libpng libjpeg-turbo
-      libwebp libsndfile libsoxr ffmpeg)
+      libwebp opus ffmpeg)
     rocm_packages="rocm-hip-sdk hipblas hipblaslt rocblas hipcub rocprim rocwmma"
   else
     package_manager=()
@@ -268,14 +274,29 @@ build_gufo() {
   local -a configure=(--preset "$preset" "-DCMAKE_MAKE_PROGRAM=$ninja_bin" -DGUFO_ENABLE_WARNINGS=OFF
     "-DCMAKE_PREFIX_PATH=$rocm_path")
   [[ -f $engine_root/CMakePresets.json ]] || die "Missing upstream CMakePresets.json in $engine_root. Update official Gufo main first."
+  require_engine_toolchains
+  configure+=("-DXRT_DIR=$xrt_dir")
   # A system Clang found first cannot compile HIP for gfx1151.
   if compiler=$(rocm_hip_compiler "$rocm_path"); then configure+=("-DCMAKE_HIP_COMPILER=$compiler"); fi
   (
     cd -- "$engine_root" &&
-      PATH="$rocm_path/bin:$PATH" "$cmake_bin" "${configure[@]}" &&
-      PATH="$rocm_path/bin:$PATH" "$cmake_bin" --build --preset "$preset" --target gufo --parallel "$jobs"
+      PATH="$(dirname -- "$cargo_bin"):$(dirname -- "$rustc_bin"):$rocm_path/bin:$PATH" "$cmake_bin" "${configure[@]}" &&
+      PATH="$(dirname -- "$cargo_bin"):$(dirname -- "$rustc_bin"):$rocm_path/bin:$PATH" "$cmake_bin" --build --preset "$preset" --target gufo --parallel "$jobs"
   ) || die "Official Gufo build failed (exit $?). See the compiler output above."
   [[ -x $engine ]] || die "The build completed without producing build/$preset/gufo."
+}
+
+find_xrt_config() {
+  local candidate
+  for candidate in "${XRT_DIR:-}" "$(saved_value Xrt)" "${XILINX_XRT:-}/share/cmake/XRT" /opt/xilinx/xrt/share/cmake/XRT; do
+    if [[ -f $candidate/XRTConfig.cmake || -f $candidate/xrt-config.cmake ]]; then printf '%s\n' "$candidate"; return 0; fi
+  done
+  return 1
+}
+
+require_engine_toolchains() {
+  [[ -n $rustc_bin && -n $cargo_bin ]] || die "Install Rust/Cargo 1.88+ with rustup (https://rustup.rs), then rerun setup. Gufo uses rust-toolchain.toml to select its pinned toolchain."
+  xrt_dir=$(find_xrt_config) || die "Install XRT with the amdxdna plugin first (https://github.com/gufo-org/gufo/blob/main/docs/install.md). Set XRT_DIR to its share/cmake/XRT directory for a nonstandard installation."
 }
 
 verify_engine() {

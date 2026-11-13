@@ -30,6 +30,7 @@ $packages = [ordered]@{
   CMake = @("Kitware.CMake", "4.4.0")
   Ninja = @("Ninja-build.Ninja", "1.13.2")
   Python = @("Python.Python.3.14", "3.14.6")
+  Rust = @("Rustlang.Rustup", "")
 }
 
 function Write-InstallerPhase([string]$Phase) {
@@ -89,6 +90,11 @@ function Test-Rock([string]$Path) {
      (Test-Path -LiteralPath (Join-Path $Path "lib\llvm\bin\amdclang-cl.exe")))
 }
 
+function Test-XrtConfig([string]$Path) {
+  $Path -and ((Test-Path -LiteralPath (Join-Path $Path "XRTConfig.cmake")) -or
+    (Test-Path -LiteralPath (Join-Path $Path "xrt-config.cmake")))
+}
+
 function Get-SetupTools {
   $saved = @{}
   if (Test-Path -LiteralPath $stateFile) {
@@ -111,11 +117,17 @@ function Get-SetupTools {
     CMake = Find-Program @($saved.CMake, "cmake.exe", "$env:ProgramFiles\CMake\bin\cmake.exe", "$cmakeRoot\CMake\bin\cmake.exe") @("--version") "3.29"
     Ninja = Find-Program @($saved.Ninja, "ninja.exe", "C:\tools\ninja\ninja.exe", "$cmakeRoot\Ninja\ninja.exe") @("--version") "1.10"
     Python = Find-Program $pythonCandidates @("-I", "-c", "import struct,sys; assert struct.calcsize('P') == 8; print('.'.join(map(str,sys.version_info[:3])))") "3.10"
+    Rust = Find-Program @($saved.Rust, "rustc.exe", "$env:USERPROFILE\.cargo\bin\rustc.exe") @("--version") "1.88"
+    Xrt = ""
     Rocm = ""
     Vcpkg = ""
     GufoPath = $engineRoot
   }
   if (-not (Test-WindowsSdk)) { $tools.VS = $null }
+  if ($tools.Rust -and -not (Find-Program @((Join-Path (Split-Path $tools.Rust) "cargo.exe")) @("--version") "1.88")) { $tools.Rust = $null }
+  foreach ($path in @($saved.Xrt, $env:XRT_DIR, "C:\xrt\xrt_sdk\xrt\share\cmake\XRT", (Join-Path $deps "xrt-2.21.75\xrt_sdk\xrt\share\cmake\XRT"))) {
+    if (Test-XrtConfig $path) { $tools.Xrt = $path; break }
+  }
   if ($Rocm -and -not (Test-Rock $Rocm)) { throw "-Rocm must point to a complete TheRock $rockVersion installation." }
   foreach ($path in @($Rocm, $saved.Rocm, $env:HIP_PATH, "C:\TheRock\build")) {
     if (Test-Rock $path) { $tools.Rocm = [IO.Path]::GetFullPath($path); break }
@@ -171,6 +183,7 @@ function Install-SetupPackage([string]$Name) {
     $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
     if (-not $winget) { throw "Install/update Microsoft's App Installer from https://aka.ms/getwinget, then rerun setup. Manual prerequisites: README.md" }
     $arguments = @("install", "--id", $package[0], "--version", $package[1], "--exact", "--source", "winget", "--architecture", "x64", "--accept-source-agreements")
+    if (-not $package[1]) { $arguments = @("install", "--id", $package[0], "--exact", "--source", "winget", "--architecture", "x64", "--accept-source-agreements") }
     if ($env:GUFO_INSTALLER_EVENTS -eq "1") { $arguments += @("--disable-interactivity", "--accept-package-agreements") }
     if ($Name -eq "VS") {
       $arguments += @("--override", "--wait --passive --norestart --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.26100")
@@ -214,6 +227,17 @@ function Install-SetupRock {
     }
   }
   throw "TheRock extracted, but its expected runtime/compiler files were not found in $destination."
+}
+
+function Install-SetupXrt {
+  $archive = Join-Path $deps "downloads\xrt_windows_sdk-2.21.75.zip"
+  Get-VerifiedDownload "https://github.com/Xilinx/XRT/releases/download/2.21.75/xrt_windows_sdk.zip" $archive "ccc244c2c423588972ade76142cdc01049477aaa39a35be97e782b97eb7c5295"
+  $destination = Join-Path $deps "xrt-2.21.75"
+  New-Item -ItemType Directory -Force -Path $destination | Out-Null
+  Invoke-SetupCommand tar.exe @("-xf", $archive, "-C", $destination)
+  $config = Join-Path $destination "xrt_sdk\xrt\share\cmake\XRT"
+  if (-not (Test-XrtConfig $config)) { throw "XRT SDK configuration was not found after extraction." }
+  return $config
 }
 
 function Get-MissingVcpkgOverrides($Manifest, [string]$Path) {
@@ -354,6 +378,7 @@ function Write-SetupPlan($Tools, [object[]]$Missing, [string]$Path) {
       }
     })
     rock = [ordered]@{ version = $rockVersion; path = [string]$Tools.Rocm; action = $(if ($Tools.Rocm) { "reuse" } else { "download" }) }
+    xrt = [ordered]@{ version = "2.21.75"; path = [string]$Tools.Xrt; action = $(if ($Tools.Xrt) { "reuse" } else { "download" }) }
     vcpkg = [ordered]@{ path = [string]$Tools.Vcpkg; action = $(if ($Tools.Vcpkg) { "reuse" } else { "prepare" }) }
     missing = @($Missing)
   }
@@ -376,6 +401,7 @@ function Invoke-WindowsSetup {
     else { Write-Host "  Install $name`: $($packages[$name] -join ' ')" }
   }
   Write-Host $(if ($tools.Rocm) { "  Reuse TheRock: $($tools.Rocm)" } else { "  Download TheRock $rockVersion to $deps" })
+  Write-Host $(if ($tools.Xrt) { "  Reuse XRT SDK: $($tools.Xrt)" } else { "  Download verified XRT SDK 2.21.75 to $deps" })
   Write-Host $(if ($tools.Vcpkg) { "  Reuse vcpkg: $($tools.Vcpkg)" } else { "  Prepare pinned vcpkg under $deps" })
   Write-Host "  Build Gufo, verify GPU startup, prepare the GUI. Existing GUI settings are preserved."
   Assert-SetupSpace ([bool]($missing.Count -or -not $tools.Rocm))
@@ -405,6 +431,9 @@ function Invoke-WindowsSetup {
     Initialize-GufoSource $tools.Git
     Write-InstallerPhase "dependencies"
     if (-not $tools.Rocm) { $tools.Rocm = Install-SetupRock; Save-SetupTools $tools }
+    if (-not $tools.Xrt) { $tools.Xrt = Install-SetupXrt; Save-SetupTools $tools }
+    $env:XRT_DIR = $tools.Xrt
+    $env:PATH = "$(Split-Path $tools.Rust);$env:PATH"
     Write-Host "Preparing vcpkg dependencies..." -ForegroundColor Cyan
     $tools.Vcpkg = Initialize-SetupVcpkg $tools.Git $tools.Vcpkg
     Save-SetupTools $tools

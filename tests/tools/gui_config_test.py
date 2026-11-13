@@ -148,7 +148,8 @@ class ConfigTest(unittest.TestCase):
                 self.assertNotIn("mtp_policy", settings)
                 self.assertEqual(settings["mtp_model"], legacy["mtp_model"])
                 self.assertEqual(settings["context"], 200000)
-                self.assertEqual(settings["draft_tokens"], 3)
+                self.assertNotIn("draft_tokens", settings)
+                self.assertNotIn("--draft-tokens", build_command(settings))
                 self.assertEqual(path.read_bytes(), before)
                 save_document(path, new_document(settings))
                 self.assertEqual(resolved_settings(load_document(path)), settings)
@@ -182,7 +183,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_reasoning_and_disk_cache_arguments(self):
         command = build_command({})
-        self.assertEqual(command[command.index("--preserve-thinking") + 1], "on")
+        self.assertEqual(command[command.index("--preserve-thinking") + 1], "auto")
         self.assertNotIn("--cache-disk", command)
         with tempfile.TemporaryDirectory(prefix="gufo cache ") as directory:
             root = Path(directory)

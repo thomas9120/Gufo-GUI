@@ -54,7 +54,11 @@
             <p id="dflash_model-filename" class="selected-file"></p>
             <p class="hint" data-i18n="Uses Gufo&#x27;s adaptive DFlash2 defaults.">Uses Gufo's adaptive DFlash2 defaults.</p>
           </div>
-          <p class="hint" data-i18n="Choose the mode for your main model and a matching draft file. Flash-Next uses an MTP sidecar; Qwen3.8-27B uses DFlash2.">Choose the mode for your main model and a matching draft file. Flash-Next uses an MTP sidecar; Qwen3.8-27B uses DFlash2.</p>
+          <div data-speculative-file="dspark_model" hidden><label for="dspark_model" data-i18n="DSpark support model">DSpark support model</label>
+            <div class="path-row"><input id="dspark_model" name="dspark_model" type="text" spellcheck="false"><button type="button" data-browse="dspark_model" data-kind="gguf" aria-label="Choose DSpark support model" data-i18n="Choose" data-i18n-aria-label="Choose DSpark support model">Choose</button></div>
+            <p id="dspark_model-filename" class="selected-file"></p>
+          </div>
+          <p class="hint" data-i18n="Choose the mode for your main model and a matching draft file. Flash-Next uses MTP; Qwen3.8-27B uses DFlash2; DeepSeek V4 Flash uses DSpark.">Choose the mode for your main model and a matching draft file. Flash-Next uses MTP; Qwen3.8-27B uses DFlash2; DeepSeek V4 Flash uses DSpark.</p>
           <label for="mmproj"><span class="i18n-text" data-i18n="Vision projector">Vision projector</span> <span class="optional" data-i18n="optional">optional</span></label>
           <div class="path-row"><input id="mmproj" name="mmproj" type="text" spellcheck="false" placeholder="Auto-detect" data-i18n-placeholder="Auto-detect"><button type="button" data-browse="mmproj" data-kind="gguf" aria-label="Choose vision projector" data-i18n="Choose" data-i18n-aria-label="Choose vision projector">Choose</button></div>
           <p id="mmproj-filename" class="selected-file"></p>
@@ -76,11 +80,12 @@
               <div><label for="host" data-i18n="API bind address">API bind address</label><input id="host" name="host" type="text" placeholder="127.0.0.1" required><p class="hint" data-i18n="Use 127.0.0.1 for local access, 0.0.0.0 for all interfaces, or your local IPv4 address. Network clients use this PC's LAN address.">Use 127.0.0.1 for local access, 0.0.0.0 for all interfaces, or your local IPv4 address. Network clients use this PC's LAN address.</p></div>
               <div><label for="port" data-i18n="API port">API port</label><input id="port" name="port" type="number" min="1" max="65535" step="1" required></div>
               <div><label for="served_model_name" data-i18n="API model name">API model name</label><input id="served_model_name" name="served_model_name" type="text" required><p class="hint" data-i18n="Use this name in your chat client.">Use this name in your chat client.</p></div>
-              <div><label for="cache_ram_gib" data-i18n="RAM cache size (GiB)">RAM cache size (GiB)</label><input id="cache_ram_gib" name="cache_ram_gib" type="number" min="0" max="65536" step="1" required><p class="hint" data-i18n="0 sizes it automatically. Raise it if long chats keep reprocessing the whole prompt; Flash-Next at 262K needs about 16. Uses system RAM.">0 sizes it automatically. Raise it if long chats keep reprocessing the whole prompt; Flash-Next at 262K needs about 16. Uses system RAM.</p></div>
+              <div><label for="cache_ram_gib" data-i18n="RAM cache size (GiB)">RAM cache size (GiB)</label><input id="cache_ram_gib" name="cache_ram_gib" type="number" min="0" max="65536" step="1" required><label class="check-label"><input id="cache_ram_off" name="cache_ram_off" type="checkbox"> <span data-i18n="Disable RAM continuation cache">Disable RAM continuation cache</span></label><p class="hint" data-i18n="0 sizes it automatically. Raise it if long chats keep reprocessing the whole prompt; Flash-Next at 262K needs about 16. Uses system RAM.">0 sizes it automatically. Raise it if long chats keep reprocessing the whole prompt; Flash-Next at 262K needs about 16. Uses system RAM.</p></div>
             </div>
-            <p id="thinking-hint" class="hint" data-i18n="Auto uses the model default (Qwen: xhigh). Clients can override the level per request. The level is ignored while Thinking is Off.">Auto uses the model default (Qwen: xhigh). Clients can override the level per request. The level is ignored while Thinking is Off.</p>
-            <label class="check-label"><input id="preserve_thinking" name="preserve_thinking" type="checkbox"> <span class="i18n-text" data-i18n="Preserve reasoning in history">Preserve reasoning in history</span></label>
-            <p class="hint" data-i18n="On by default. Keeps reasoning supplied by your client in later prompts, helping cache reuse. Independent of generating new thoughts. Chat Completions clients can override this per request.">On by default. Keeps reasoning supplied by your client in later prompts, helping cache reuse. Independent of generating new thoughts. Chat Completions clients can override this per request.</p>
+            <p id="thinking-hint" class="hint" data-i18n="Auto uses the model default. Clients can override the level per request. The level is ignored while Thinking is Off.">Auto uses the model default. Clients can override the level per request. The level is ignored while Thinking is Off.</p>
+            <label for="preserve_thinking" data-i18n="Preserve reasoning in history">Preserve reasoning in history</label>
+            <select id="preserve_thinking" name="preserve_thinking"><option value="auto" data-i18n="Model default">Model default</option><option value="on" data-i18n="On">On</option><option value="off" data-i18n="Off">Off</option></select>
+            <p class="hint" data-i18n="Auto follows the model default. On keeps reasoning supplied by your client in later prompts. Independent of generating new thoughts. Chat Completions clients can override this per request.">Auto follows the model default. On keeps reasoning supplied by your client in later prompts. Independent of generating new thoughts. Chat Completions clients can override this per request.</p>
           </section>
           <section class="card" aria-labelledby="sampling-heading">
             <div class="section-title"><span class="section-number">03</span><h2 id="sampling-heading" data-i18n="Sampling defaults">Sampling defaults</h2></div>
@@ -96,7 +101,7 @@
           </section>
         </div>
       </div>
-      <details class="card advanced"><summary><span class="i18n-text" data-i18n="More options">More options</span> <span data-i18n="Disk cache, sessions, repetition penalties and MTP">Disk cache, sessions, repetition penalties and MTP</span></summary>
+      <details class="card advanced"><summary><span class="i18n-text" data-i18n="More options">More options</span> <span data-i18n="Disk cache, sessions and repetition penalties">Disk cache, sessions and repetition penalties</span></summary>
         <label class="check-label"><input id="cache_disk" name="cache_disk" type="checkbox"> <span class="i18n-text" data-i18n="Enable disk continuation cache">Enable disk continuation cache</span></label>
         <p class="hint" data-i18n="Off by default. Reuses compatible snapshots after an engine restart. RAM caching works independently. Stop and Exit do not wait for pending disk writes; already written snapshots remain reusable.">Off by default. Reuses compatible snapshots after an engine restart. RAM caching works independently. Stop and Exit do not wait for pending disk writes; already written snapshots remain reusable.</p>
         <fieldset id="disk-cache-options"><legend data-i18n="Disk cache settings">Disk cache settings</legend>
@@ -116,7 +121,6 @@
           <div><label for="frequency_penalty" data-i18n="Frequency penalty">Frequency penalty</label><input id="frequency_penalty" name="frequency_penalty" type="number" min="-2" max="2" step="any" required></div>
           <div><label for="presence_penalty" data-i18n="Presence penalty">Presence penalty</label><input id="presence_penalty" name="presence_penalty" type="number" min="-2" max="2" step="any" required></div>
         </div>
-        {% include "mtp-options.html" %}
       </details>
       <section class="launch-bar" aria-label="Launch controls" data-i18n-aria-label="Launch controls">
         <div class="save-state"><span id="saved-state" data-i18n="Loading settings…">Loading settings…</span><small id="next-launch-note" data-i18n="Changes apply to the next launch.">Changes apply to the next launch.</small></div>
