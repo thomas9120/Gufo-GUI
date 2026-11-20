@@ -486,3 +486,128 @@ test("DSpark, reasoning levels and RAM off survive form restoration", async (t) 
   edit(env, "model_family", "qwen38_27b");
   assert.equal(form.values().speculative, "off");
 });
+
+test("extension options render dynamically, track dirty state, clear draft options on model change, and preserve unknown saved flags", async (t) => {
+  const env = await setup(t);
+  const { createSettingsForm, sameSettings } = await env.use("settings-form.js");
+  const { initFilePicker } = await env.use("file-picker.js");
+  const { setLanguage } = await env.use("i18n.js");
+  const hy4Extensions = {
+    available: true,
+    error: "",
+    extensions: [
+      { name: "qwen38", version: "0.3.29", builtin: true, installed: false, status: "ready" },
+      { name: "hy4flash", version: "0.1.0", builtin: false, installed: true, status: "ready" },
+      { name: "stale_ext", version: "0.1.0", builtin: false, installed: true, status: "needs update" },
+    ],
+    excluded: [],
+    providers: [{ id: "hy4flash", extension: "hy4flash", available: true, reason: "" }],
+    options: [
+      { name: "--dfly-model", type: "path", help: "DFly2 drafter checkpoint", providers: ["hy4flash"], extensions: ["hy4flash"], draft_mode: "dfly" },
+      { name: "--dfly-draft-tokens", type: "integer", help: "Most tokens DFly2 drafts per step", providers: ["hy4flash"], extensions: ["hy4flash"], draft_mode: "" },
+      { name: "--enable-fast", type: "boolean", help: "Enable fast path", providers: ["hy4flash"], extensions: ["hy4flash"], draft_mode: "" },
+    ],
+    draft_options: { "--dfly-model": { provider: "hy4flash", extension: "hy4flash", mode: "dfly" } },
+  };
+
+  let edits = 0;
+  const form = createSettingsForm(env.initial.settings, env.initial.families, env.initial.modes, () => { edits++; }, hy4Extensions);
+  assert.equal(env.$("extension-options-section").hidden, false);
+  assert.match(env.$("extensions-summary").textContent, /2 loaded \(hy4flash\)/);
+  assert.equal(env.$("extensions-warning").hidden, false);
+  assert.match(env.$("extensions-warning").textContent, /stale_ext/);
+
+  const dflyInput = env.window.document.querySelector('[data-provider-option="--dfly-model"]');
+  const tokensInput = env.window.document.querySelector('[data-provider-option="--dfly-draft-tokens"]');
+  const fastInput = env.window.document.querySelector('[data-provider-option="--enable-fast"]');
+  assert.ok(dflyInput && tokensInput && fastInput);
+
+  // Dynamic path browse button works via event delegation and enables Use this folder.
+  env.window.fetch = async (url) => {
+    assert.match(url, /kind=path/);
+    return {
+      ok: true,
+      json: async () => ({
+        path: "C:\\models\\dfly2",
+        parent: "C:\\models",
+        roots: ["C:\\"],
+        entries: [{ name: "model-00148-of-00148.safetensors", path: "C:\\models\\dfly2\\model-00148-of-00148.safetensors", directory: false, shards: 1 }],
+      }),
+    };
+  };
+  initFilePicker("C:\\");
+  env.window.document.querySelector(`[data-browse="${dflyInput.id}"]`).click(); await tick();
+  assert.equal(env.$("select-folder").hidden, false);
+  assert.match(env.$("picker-entries").textContent, /FILE/);
+  env.$("select-folder").click();
+  assert.equal(dflyInput.value, "C:\\models\\dfly2");
+
+  tokensInput.value = "5";
+  tokensInput.dispatchEvent(new env.window.Event("input", { bubbles: true }));
+  fastInput.click();
+
+  const saved = form.values();
+  assert.deepEqual({ ...saved.provider_options }, {
+    "--dfly-draft-tokens": 5,
+    "--dfly-model": "C:\\models\\dfly2",
+    "--enable-fast": true,
+  });
+  assert.equal(sameSettings(saved, env.initial.settings), false);
+  assert.equal(sameSettings(saved, structuredClone(saved)), true);
+
+  // Changing the main model clears extension draft_options (--dfly-model) while keeping other options.
+  edit(env, "model", "C:\\models\\another.gguf");
+  assert.equal(form.values().provider_options["--dfly-model"], undefined);
+  assert.equal(form.values().provider_options["--dfly-draft-tokens"], 5);
+  assert.equal(form.values().provider_options["--enable-fast"], true);
+
+  // Switching to an executable without hy4flash preserves saved values as removable fallback rows.
+  form.apply(saved);
+  form.setExtensions({ available: true, error: "", extensions: [], excluded: [], providers: [], options: [], draft_options: {} });
+  assert.equal(env.$("extension-options-section").hidden, false);
+  assert.deepEqual({ ...form.values().provider_options }, { ...saved.provider_options });
+  assert.ok(env.window.document.querySelector(".ext-unknown-tag"));
+
+  // Language switching translates extension chrome without breaking raw flag names.
+  setLanguage("zh-CN");
+  assert.equal(env.$("refresh-extensions").textContent, "刷新");
+  assert.equal(env.window.document.querySelector('[data-provider-option="--dfly-model"]').value, "C:\\models\\dfly2");
+  setLanguage("en");
+
+  // Removing an unknown flag updates values and triggers edit callback.
+  const beforeEdits = edits;
+  env.window.document.querySelector(".ext-remove").click();
+  assert.ok(edits > beforeEdits);
+  assert.equal(Object.keys(form.values().provider_options).length, 2);
+});
+
+test("refreshing extensions updates dynamic provider options and command preview", async (t) => {
+  const env = await setup(t);
+  const requests = [];
+  env.window.fetch = async (url, options) => {
+    const body = options?.body ? JSON.parse(options.body) : null;
+    requests.push([url, body]);
+    const response = url === "/api/settings" ? structuredClone(env.initial)
+      : url === "/api/status" ? { state: "stopped", logs: [], pid: null }
+      : url === "/api/preview" ? { command: `gufo ${JSON.stringify(body.provider_options)}` }
+      : url === "/api/extensions" ? {
+        available: true,
+        error: "",
+        extensions: [{ name: "hy4flash", version: "0.1.0", builtin: false, installed: true, status: "ready" }],
+        excluded: [],
+        providers: [{ id: "hy4flash", extension: "hy4flash", available: true, reason: "" }],
+        options: [{ name: "--dfly-model", type: "path", help: "DFly2 drafter", providers: ["hy4flash"], extensions: ["hy4flash"], draft_mode: "dfly" }],
+        draft_options: { "--dfly-model": { provider: "hy4flash", extension: "hy4flash", mode: "dfly" } },
+      }
+      : assert.fail(`Unexpected request ${url}`);
+    return { ok: true, json: async () => response };
+  };
+  await env.use("app.js"); await tick();
+  assert.equal(env.$("extension-options-section").hidden, true);
+  env.$("refresh-extensions").click(); await tick();
+  const extReq = requests.find(([url]) => url === "/api/extensions");
+  assert.ok(extReq);
+  assert.equal(extReq[1].refresh, true);
+  assert.equal(env.$("extension-options-section").hidden, false);
+  assert.ok(env.window.document.querySelector('[data-provider-option="--dfly-model"]'));
+});

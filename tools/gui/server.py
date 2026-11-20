@@ -15,6 +15,7 @@ from flask import Flask, abort, jsonify, render_template, request, send_file
 from werkzeug.exceptions import HTTPException
 
 from command import build_command
+from extensions import inspect_executable
 from files import browse_directory
 from launcher_process import ProcessManager
 from models import MODEL_FAMILIES, SPECULATIVE_MODES
@@ -87,10 +88,34 @@ def create_app(config_path, manager, exit_event, ui_port=8090):
     @app.get("/api/settings")
     def settings():
         with action_lock:
-            return jsonify(document=document, settings=resolved_settings(document),
+            current = resolved_settings(document)
+            return jsonify(document=document, settings=current,
                            families=MODEL_FAMILIES, modes=SPECULATIVE_MODES,
+                           extensions=inspect_executable(current["executable"]),
                            path=str(config_path), warning=load_error,
                            saved=config_path.exists() and not load_error, home=str(Path.home()))
+
+    @app.post("/api/extensions")
+    def extensions():
+        payload = request.get_json(silent=True)
+        if payload is None:
+            payload = {}
+        if not isinstance(payload, dict) or set(payload) - {"executable", "refresh"}:
+            raise ValueError("Invalid extension inspection request.")
+        refresh = payload.get("refresh", False)
+        if type(refresh) is not bool:
+            raise ValueError("refresh: expected a checkbox value.")
+        if "executable" in payload:
+            executable = payload["executable"]
+            if not isinstance(executable, str) or any(ord(c) < 32 for c in executable):
+                raise ValueError("executable: enter a single line of text.")
+            executable = executable.strip()
+            if executable and not Path(executable).expanduser().is_absolute():
+                raise ValueError("executable: use a full filesystem path.")
+        else:
+            with action_lock:
+                executable = resolved_settings(document)["executable"]
+        return jsonify(inspect_executable(executable, refresh=refresh))
 
     @app.post("/api/presets")
     def save():
@@ -122,7 +147,9 @@ def create_app(config_path, manager, exit_event, ui_port=8090):
 
     @app.post("/api/preview")
     def preview():
-        command = build_command(request.get_json())
+        payload = request.get_json()
+        values = validate_settings(payload)
+        command = build_command(values, extension_info=inspect_executable(values["executable"]))
         display = subprocess.list2cmdline(command) if os.name == "nt" else shlex.join(command)
         return jsonify(command=display)
 
@@ -144,7 +171,8 @@ def create_app(config_path, manager, exit_event, ui_port=8090):
             values = validate_settings(payload["settings"])
             if values["port"] == ui_port:
                 raise ValueError("The Gufo API and launcher need different ports (defaults: 8080 and 8090).")
-            command = build_command(values, check_files=True)
+            command = build_command(values, check_files=True,
+                                    extension_info=inspect_executable(values["executable"]))
             launch = {"preset_id": preset["id"], "preset_name": preset["name"],
                       "modified": values != resolved_settings(document, preset["id"]),
                       "settings": values}

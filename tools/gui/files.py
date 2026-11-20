@@ -28,7 +28,7 @@ def check_gguf(value, label, *, sharded=False):
 
 
 def browse_directory(value, kind="gguf"):
-    if kind not in ("gguf", "executable", "folder"):
+    if kind not in ("gguf", "executable", "folder", "path"):
         raise ValueError("Unknown file picker type.")
     path = Path(value or Path.home()).expanduser()
     if not path.is_absolute() or not path.is_dir():
@@ -51,7 +51,7 @@ def browse_directory(value, kind="gguf"):
                     if kind == "executable" and not (child.name.lower().endswith(".exe") or child.name == "gufo"):
                         continue
                 entries.append({"name": child.name, "path": str(path / child.name),
-                                "directory": is_dir, "shards": int(shard[3]) if shard else 1})
+                                "directory": is_dir, "shards": int(shard[3]) if (shard and kind == "gguf") else 1})
             except OSError:
                 continue  # A deleted or inaccessible entry need not hide the folder.
     entries.sort(key=lambda entry: (not entry["directory"], entry["name"].casefold()))

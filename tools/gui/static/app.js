@@ -10,6 +10,7 @@ initLanguage();
 
 let form, presets, busy = false, closed = false;
 let previewTimer, previewVersion = 0, copiedTimer;
+let extensionsTimer, extensionsVersion = 0, inspectedExecutable = null;
 const runtime = createRuntime(updateControls);
 
 function updateControls() {
@@ -35,11 +36,33 @@ async function preview(version) {
   }
 }
 
+async function inspectExtensions(executable, refresh = false) {
+  const version = ++extensionsVersion;
+  try {
+    const info = await api("extensions", { executable, refresh });
+    if (version !== extensionsVersion || !form) return;
+    inspectedExecutable = executable;
+    form.setExtensions(info);
+    updateControls();
+    const pv = ++previewVersion;
+    preview(pv);
+  } catch (error) {
+    if (version === extensionsVersion && refresh) notice(error.message);
+  }
+}
+
 function edited() {
   updateControls();
   clearTimeout(previewTimer);
   const version = ++previewVersion;
   previewTimer = setTimeout(() => preview(version), 250);
+  if (form) {
+    const currentExe = form.values().executable;
+    if (inspectedExecutable !== null && currentExe !== inspectedExecutable) {
+      clearTimeout(extensionsTimer);
+      extensionsTimer = setTimeout(() => inspectExtensions(currentExe, false), 400);
+    }
+  }
 }
 
 async function action(callback) {
@@ -80,6 +103,10 @@ $("copy-url").addEventListener("click", () => action(async () => {
   clearTimeout(copiedTimer);
   copiedTimer = setTimeout(() => text($("copy-url"), "Copy"), 1500);
 }));
+$("refresh-extensions")?.addEventListener("click", () => {
+  if (!form || busy || closed) return;
+  inspectExtensions(form.values().executable, true);
+});
 window.addEventListener("beforeunload", (event) => {
   if (!closed && presets?.dirty()) { event.preventDefault(); event.returnValue = ""; }
 });
@@ -88,7 +115,8 @@ updateControls();
 (async () => {
   try {
     const result = await api("settings");
-    form = createSettingsForm(result.settings, result.families, result.modes, edited);
+    inspectedExecutable = result.settings.executable;
+    form = createSettingsForm(result.settings, result.families, result.modes, edited, result.extensions);
     presets = createPresets(result, form, action, edited);
     initFilePicker(result.home);
     text($("settings-location"), "Settings · {path}", { path: result.path });
