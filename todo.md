@@ -23,11 +23,11 @@
   - [x] DOM & i18n tests (`tests/tools/gui_dom_test.mjs`) covering dynamic extension option rendering, editing, preset restore, dirty state, file picker `path` mode, and `zh-CN` translations.
 
 ### Phase 2: Extension Management & Build Integration
-- [ ] Expose `gufo extension install / update / remove` via async background runner with streamed logs and cancellation (in Gufo Setup TUI and/or Web GUI when server is stopped).
-- [ ] Add registry browsing (`gufo extension list --json`) alongside explicit security confirmation + pinned revision enforcement for non-registry Git URLs and local paths (`--yes`).
-- [ ] Rebuild `needs update` modules via `gufo extension update` after **Update official Gufo engine**.
-- [ ] Wrap `gufo extension install/update` on Windows with the saved Visual Studio (`vcvars64.bat`), ROCm, and vcpkg toolchain environment from `build/windows-setup.json`.
-- [ ] Optional: add `extension_dirs` (`-DGUFO_EXTENSION_DIRS`) support to `tools/installer/core.py`, `tools/linux/common.sh`, and `tools/windows/build.ps1` / `build-upstream.cmd` for compiled-in source extensions.
+- [x] Expose `gufo extension install / update / remove` via async background runner with streamed logs and cancellation (in Web GUI **Manage extensions** dialog when server is stopped).
+- [x] Add registry browsing (`gufo extension list --json`) alongside explicit security confirmation + pinned revision enforcement for non-registry Git URLs and local paths (`--yes`).
+- [x] Rebuild `needs update` modules via `gufo extension update` after **Update official Gufo engine** (Linux `tools/linux/update.sh` and Windows `tools/windows/update.ps1`).
+- [x] Wrap `gufo extension install/update` on Windows with the saved Visual Studio (`vcvars64.bat`), ROCm, and vcpkg toolchain environment from `build/windows-setup.json` (`tools/windows/run-extension.cmd`).
+- [x] Add `extension_dirs` (`-DGUFO_EXTENSION_DIRS`) support to `tools/installer/core.py`, `tools/installer/main.py`, `tools/installer/tui.py`, `tools/linux/common.sh` / `setup.sh` / `update.sh`, and `tools/windows/build.ps1` / `build-upstream.cmd` / `setup.ps1` / `update.ps1` for compiled-in source extensions.
 
 ## Advanced engine controls
 

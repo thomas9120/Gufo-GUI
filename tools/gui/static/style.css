@@ -156,6 +156,7 @@ h2 { font-size: 16px; letter-spacing: -.2px; margin: 0; font-weight: 650; }
 .divider { height: 1px; background: var(--line); margin: 22px 0; }
 .extensions-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
 .extensions-bar .hint { margin: 0; }
+.extensions-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .extensions-bar button { padding: 3px 9px; font-size: 11px; }
 .extensions-warning { color: var(--warn-ink); background: var(--warn); padding: 7px 10px; border-radius: 6px; margin-top: 8px; }
 .section-subtitle { font-size: 13px; font-weight: 650; margin-bottom: 4px; }
@@ -164,6 +165,15 @@ h2 { font-size: 16px; letter-spacing: -.2px; margin: 0; font-weight: 650; }
 .ext-option-head label { margin-top: 8px; }
 .ext-remove { padding: 2px 8px; font-size: 11px; }
 .ext-unknown-tag { background: var(--warn); color: var(--warn-ink); }
+.ext-dialog-toolbar, .ext-job-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.ext-catalog-list { max-height: 220px; overflow-y: auto; border-block: 1px solid var(--line); padding: 4px 0; }
+.ext-catalog-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 4px; border-bottom: 1px solid var(--row-line); }
+.ext-catalog-row:last-child { border-bottom: 0; }
+.ext-catalog-meta { min-width: 0; flex: 1; }
+.ext-catalog-meta .hint { margin-top: 3px; }
+.ext-catalog-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; }
+.ext-catalog-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.ext-catalog-actions button { padding: 4px 10px; font-size: 12px; }
 .check-label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 15px; }
 .field-grid label { margin-top: 8px; }

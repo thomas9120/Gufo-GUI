@@ -5,12 +5,13 @@ param(
   [string]$Rocm = "",
   [string]$Vcpkg = "",
   [string]$Ninja = "",
+  [string]$ExtensionDirs = "",
   [switch]$CheckOnly,
   [string]$PlanJson = "",
   [ValidateRange(1, 64)][int]$Jobs = 4
 )
 $ErrorActionPreference = "Stop"
-. "$PSScriptRoot\setup.ps1" -GufoPath $GufoPath -Rocm $Rocm -Vcpkg $Vcpkg -Jobs $Jobs -CheckOnly:$CheckOnly -PlanJson $PlanJson
+. "$PSScriptRoot\setup.ps1" -GufoPath $GufoPath -Rocm $Rocm -Vcpkg $Vcpkg -ExtensionDirs $ExtensionDirs -Jobs $Jobs -CheckOnly:$CheckOnly -PlanJson $PlanJson
 
 function Invoke-WindowsUpdate {
   Write-InstallerPhase "inspect"
@@ -39,12 +40,15 @@ function Invoke-WindowsUpdate {
   $env:PATH = "$(Split-Path $tools.Git);$(Split-Path $tools.CMake);$(Split-Path $tools.Ninja);$(Split-Path $tools.Python);$env:PATH"
   $shell = (Get-Process -Id $PID).Path
   Write-InstallerPhase "build"
-  Invoke-SetupCommand $shell @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "$PSScriptRoot\build.ps1",
+  $buildArgs = @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "$PSScriptRoot\build.ps1",
     "-GufoPath", $engineRoot, "-VisualStudio", $tools.VS, "-Python", $tools.Python, "-Jobs", "$Jobs", "-Rocm", $tools.Rocm, "-Vcpkg", $tools.Vcpkg, "-Ninja", $tools.Ninja)
+  if ($ExtensionDirs) { $buildArgs += @("-ExtensionDirs", $ExtensionDirs) }
+  Invoke-SetupCommand $shell $buildArgs
   $engine = Join-Path $engineRoot "build\windows-release\gufo.exe"
   Write-InstallerPhase "verify"
   Invoke-SetupCommand $engine @("--version")
   Invoke-SetupCommand $engine @("diagnose", "--section", "gpu")
+  Update-InstalledExtensions $engine $tools
   Write-InstallerPhase "complete"
   Write-Host "`nUpdate complete: $engine" -ForegroundColor Green
   Write-Host "Open launch-gui.bat. Saved presets are preserved."

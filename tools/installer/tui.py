@@ -82,6 +82,8 @@ class SetupApp(App):
                     yield Input(id="rocm")
                     yield Label("vcpkg folder (Windows only; blank uses managed dependencies)")
                     yield Input(id="vcpkg", disabled=not self.installer.windows)
+                    yield Label("Compiled-in extension folders (optional; separate multiple paths with ;)")
+                    yield Input(id="extension_dirs")
                     yield Label("Parallel build jobs (1–64)")
                     yield Input(id="jobs", type="integer")
                 with Horizontal(classes="buttons"):
@@ -260,6 +262,7 @@ class SetupApp(App):
             return
         for key in ("gufo_path", "rocm", "vcpkg", "jobs"):
             self.query_one(f"#{key}", Input).value = str(getattr(self.options, key))
+        self.query_one("#extension_dirs", Input).value = ";".join(self.options.extension_dirs)
         self.show("settings")
         self.query_one("#gufo_path", Input).focus()
 
@@ -268,6 +271,8 @@ class SetupApp(App):
         try:
             values = {key: self.query_one(f"#{key}", Input).value.strip() for key in ("gufo_path", "rocm", "vcpkg", "jobs")}
             values["jobs"] = int(values["jobs"])
+            raw_exts = self.query_one("#extension_dirs", Input).value
+            values["extension_dirs"] = [part.strip() for part in raw_exts.split(";") if part.strip()]
             options = Options(**values).validate(self.installer.root)
             save_options(options, self.installer.root)
             # Keep the caller's object current for the post-TUI launch handoff.

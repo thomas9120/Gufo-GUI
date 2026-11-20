@@ -16,6 +16,8 @@ def parser():
     result.add_argument("--gufo-path", help="Separate official engine checkout")
     result.add_argument("--rocm", help="ROCm/TheRock installation prefix")
     result.add_argument("--vcpkg", help="Windows vcpkg checkout")
+    result.add_argument("--extension-dir", action="append", dest="extension_dirs",
+                        help="Compiled-in extension source folder (repeatable)")
     result.add_argument("--jobs", type=int, help="Parallel build jobs, 1-64")
     result.add_argument("--check-only", action="store_true", help="Inspect the selected action without installing")
     result.add_argument("--yes", action="store_true", help="Accept the plain-mode plan")
@@ -77,7 +79,7 @@ def main():
     args = parser().parse_args()
     installer = Installer()
     options = load_options()
-    for key in ("gufo_path", "rocm", "vcpkg", "jobs"):
+    for key in ("gufo_path", "rocm", "vcpkg", "jobs", "extension_dirs"):
         if getattr(args, key) is not None:
             setattr(options, key, getattr(args, key))
     options.validate()

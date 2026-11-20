@@ -270,12 +270,19 @@ initialize_gufo_source() {
 }
 
 build_gufo() {
-  local compiler
+  local compiler ext joined=""
   local -a configure=(--preset "$preset" "-DCMAKE_MAKE_PROGRAM=$ninja_bin" -DGUFO_ENABLE_WARNINGS=OFF
     "-DCMAKE_PREFIX_PATH=$rocm_path")
   [[ -f $engine_root/CMakePresets.json ]] || die "Missing upstream CMakePresets.json in $engine_root. Update official Gufo main first."
   require_engine_toolchains
   configure+=("-DXRT_DIR=$xrt_dir")
+  if (( ${#extension_dirs[@]} )); then
+    for ext in "${extension_dirs[@]}"; do
+      [[ -d $ext ]] || die "Extension source folder not found: $ext"
+      joined+="${joined:+;}$(realpath -- "$ext")"
+    done
+    configure+=("-DGUFO_EXTENSION_DIRS=$joined")
+  fi
   # A system Clang found first cannot compile HIP for gfx1151.
   if compiler=$(rocm_hip_compiler "$rocm_path"); then configure+=("-DCMAKE_HIP_COMPILER=$compiler"); fi
   (
@@ -284,6 +291,24 @@ build_gufo() {
       PATH="$(dirname -- "$cargo_bin"):$(dirname -- "$rustc_bin"):$rocm_path/bin:$PATH" "$cmake_bin" --build --preset "$preset" --target gufo --parallel "$jobs"
   ) || die "Official Gufo build failed (exit $?). See the compiler output above."
   [[ -x $engine ]] || die "The build completed without producing build/$preset/gufo."
+}
+
+update_installed_extensions() {
+  local store installed_json count
+  store="${GUFO_EXTENSIONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/gufo/extensions}"
+  installed_json="$store/installed.json"
+  [[ -f $installed_json && -n ${python_bin:-} ]] || return 0
+  count=$("$python_bin" -I - "$installed_json" 2>/dev/null <<'EOF' || printf '0'
+import json, sys
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+exts = doc.get("extensions") if isinstance(doc, dict) and doc.get("schema") == 1 else []
+print(len(exts) if isinstance(exts, list) else 0)
+EOF
+)
+  (( count > 0 )) || return 0
+  info "Updating installed Gufo extension modules ($count)..."
+  PATH="$(dirname -- "$git_bin"):$(dirname -- "$cmake_bin"):$(dirname -- "$ninja_bin"):$rocm_path/bin:$PATH" \
+    setup_command "$engine" extension update
 }
 
 find_xrt_config() {

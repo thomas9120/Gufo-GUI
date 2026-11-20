@@ -1,0 +1,44 @@
+<dialog id="extensions-dialog" aria-labelledby="extensions-dialog-title">
+  <div class="dialog-heading">
+    <h2 id="extensions-dialog-title" data-i18n="Manage extensions">Manage extensions</h2>
+    <button type="button" id="close-extensions-dialog" class="quiet" aria-label="Close extensions manager" data-i18n-aria-label="Close extensions manager">✕</button>
+  </div>
+  <p id="ext-server-warning" class="hint extensions-warning" hidden data-i18n="Stop the running Gufo server before installing, updating, or removing extensions.">Stop the running Gufo server before installing, updating, or removing extensions.</p>
+  <p id="ext-dialog-error" class="picker-error" role="alert"></p>
+  <div class="ext-dialog-toolbar">
+    <span class="section-subtitle" data-i18n="Installed and registry extensions">Installed and registry extensions</span>
+    <div class="actions">
+      <button type="button" id="ext-catalog-refresh" class="quiet" data-i18n="Refresh">Refresh</button>
+      <button type="button" id="ext-update-all" data-i18n="Update all">Update all</button>
+    </div>
+  </div>
+  <p id="ext-registry-warning" class="hint extensions-warning" hidden></p>
+  <div id="ext-catalog-list" class="ext-catalog-list" data-i18n="Loading extension catalog…">Loading extension catalog…</div>
+  <div class="divider"></div>
+  <div class="section-subtitle" data-i18n="Install from Git URL or local folder">Install from Git URL or local folder</div>
+  <label for="ext-source-input" data-i18n="Extension source">Extension source</label>
+  <div class="path-row">
+    <input id="ext-source-input" type="text" spellcheck="false" placeholder="Registry name, Git URL@commit, or folder path" data-i18n-placeholder="Registry name, Git URL@commit, or folder path">
+    <button type="button" data-browse="ext-source-input" data-kind="folder" aria-label="Choose extension folder" data-i18n="Browse" data-i18n-aria-label="Choose extension folder">Browse</button>
+    <button type="button" id="ext-install-button" class="primary" data-i18n="Install">Install</button>
+  </div>
+  <label class="check-label"><input id="ext-replace-builtin" type="checkbox"> <span data-i18n="Replace built-in extension with the same name">Replace built-in extension with the same name</span></label>
+  <p class="hint" data-i18n="Pin Git URLs to an exact commit or tag (for example, https://github.com/franzmoca/hy4-gufo-extension@<commit>).">Pin Git URLs to an exact commit or tag (for example, https://github.com/franzmoca/hy4-gufo-extension@&lt;commit&gt;).</p>
+  <div class="divider"></div>
+  <div class="ext-job-header">
+    <span class="section-subtitle" data-i18n="Extension task output">Extension task output</span>
+    <span id="ext-job-status" class="status" data-i18n="Idle">Idle</span>
+    <button type="button" id="ext-cancel-job" class="stop" disabled data-i18n="Cancel task">Cancel task</button>
+  </div>
+  <pre id="ext-job-logs" data-i18n="No extension task running.">No extension task running.</pre>
+</dialog>
+<dialog id="extension-trust-dialog" class="small-dialog" aria-labelledby="extension-trust-title">
+  <div class="dialog-heading"><h2 id="extension-trust-title" data-i18n="Trust unreviewed extension source?">Trust unreviewed extension source?</h2></div>
+  <p><code id="extension-trust-source"></code></p>
+  <p class="hint" data-i18n="This source has not been reviewed by the Gufo maintainers. Installing it runs its build scripts and native code with your user permissions.">This source has not been reviewed by the Gufo maintainers. Installing it runs its build scripts and native code with your user permissions.</p>
+  <p class="hint" data-i18n="Review the repository or folder contents before continuing.">Review the repository or folder contents before continuing.</p>
+  <div class="dialog-footer actions">
+    <button type="button" data-choice="cancel" data-i18n="Cancel">Cancel</button>
+    <button type="button" data-choice="confirm" class="primary" data-i18n="Install anyway">Install anyway</button>
+  </div>
+</dialog>

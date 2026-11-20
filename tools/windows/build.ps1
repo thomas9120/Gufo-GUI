@@ -7,6 +7,7 @@ param(
   [Parameter(Mandatory)][string]$Vcpkg,
   [Parameter(Mandatory)][string]$Ninja,
   [string]$Python = "python",
+  [string]$ExtensionDirs = "",
   [ValidateRange(1, 64)][int]$Jobs = 4
 )
 $ErrorActionPreference = "Stop"
@@ -29,6 +30,13 @@ $env:GUFO_NINJA = (Get-Command $Ninja -CommandType Application -ErrorAction Stop
 $env:GUFO_BUILD_JOBS = "$Jobs"
 $env:GUFO_BUILD_DIR = Join-Path $source "build\windows-release"
 $env:GUFO_POWERSHELL = (Get-Process -Id $PID).Path
+if ($ExtensionDirs) {
+  $resolvedExts = @($ExtensionDirs -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { (Resolve-Path -LiteralPath $_).Path.Replace('\', '/') })
+  if ($resolvedExts.Count) { $env:GUFO_EXTENSION_DIRS = ($resolvedExts -join ';') }
+  else { Remove-Item Env:GUFO_EXTENSION_DIRS -ErrorAction SilentlyContinue }
+} else {
+  Remove-Item Env:GUFO_EXTENSION_DIRS -ErrorAction SilentlyContinue
+}
 & $Python (Join-Path $source "tools\windows\patch_sdk_math.py") $env:HIP_PATH
 if ($LASTEXITCODE -ne 0) { throw "Upstream's SDK header patch failed (exit $LASTEXITCODE)." }
 Push-Location -LiteralPath $source

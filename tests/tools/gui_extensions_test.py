@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools/gui"))
 from command import build_command
+import extension_manager
 import extensions
 from files import browse_directory
 from launcher_process import ProcessManager
@@ -394,6 +395,203 @@ class ExtensionsTest(unittest.TestCase):
                 argv = manager.start.call_args.args[0]
                 self.assertIn(f"--dfly-model={dfly}", argv)
                 self.assertIn("--dfly-draft-tokens=4", argv)
+
+    def test_parse_extension_source_enforces_pinning_and_trust(self):
+        self.assertEqual(
+            extension_manager.parse_extension_source("lfm3"),
+            {"kind": "registry", "source": "lfm3", "trusted": True},
+        )
+        self.assertEqual(
+            extension_manager.parse_extension_source("lfm3@0.4.0"),
+            {"kind": "registry", "source": "lfm3@0.4.0", "trusted": True},
+        )
+        git_url = "https://github.com/franzmoca/hy4-gufo-extension@967f5e13ad501e4a505988f20694fed1e442ead1"
+        self.assertEqual(
+            extension_manager.parse_extension_source(git_url),
+            {"kind": "git", "source": git_url, "trusted": False},
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            local = extension_manager.parse_extension_source(directory)
+            self.assertEqual(local["kind"], "path")
+            self.assertFalse(local["trusted"])
+            self.assertEqual(local["source"], str(Path(directory).resolve()))
+        for invalid in (
+            "",
+            "   ",
+            "--yes",
+            "install",
+            "https://github.com/franzmoca/hy4-gufo-extension",
+            "https://github.com/franzmoca/hy4-gufo-extension@",
+            "git@github.com:franzmoca/hy4-gufo-extension.git",
+            "relative/dir",
+            "bad\nline",
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                extension_manager.parse_extension_source(invalid)
+
+    def test_windows_toolchain_wrapper_is_used_for_builds_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            exe = root / "gufo.exe"
+            exe.touch()
+            vs = root / "vs"
+            vcvars = vs / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
+            vcvars.parent.mkdir(parents=True)
+            vcvars.touch()
+            wrapper = root / "tools" / "windows" / "run-extension.cmd"
+            wrapper.parent.mkdir(parents=True)
+            wrapper.touch()
+            (root / "build").mkdir()
+            (root / "build" / "windows-setup.json").write_text(
+                json.dumps({
+                    "VS": str(vs),
+                    "Rocm": str(root / "rocm"),
+                    "Vcpkg": str(root / "vcpkg"),
+                    "Xrt": str(root / "xrt"),
+                    "Git": str(root / "git" / "git.exe"),
+                    "CMake": str(root / "cmake" / "cmake.exe"),
+                    "Ninja": str(root / "ninja" / "ninja.exe"),
+                }),
+                encoding="utf-8",
+            )
+            argv, env, cwd = extension_manager.build_extension_invocation(
+                str(exe), ["install", "lfm3"], root=root, windows=True
+            )
+            self.assertEqual(argv[:4], ["cmd.exe", "/d", "/c", str(wrapper)])
+            self.assertEqual(argv[4:], ["install", "lfm3"])
+            self.assertEqual(env["GUFO_VCVARS"], str(vcvars))
+            self.assertEqual(env["GUFO_EXE"], str(exe))
+            self.assertEqual(env["HIP_PATH"], str(root / "rocm").replace("\\", "/"))
+            self.assertEqual(env["VCPKG_ROOT"], str(root / "vcpkg").replace("\\", "/"))
+            self.assertEqual(cwd, root)
+
+            # Remove does not require MSVC wrapper.
+            rm_argv, _, _ = extension_manager.build_extension_invocation(
+                str(exe), ["remove", "lfm3"], root=root, windows=True
+            )
+            self.assertEqual(rm_argv, [str(exe), "extension", "remove", "lfm3"])
+
+            # Linux invocation runs gufo directly.
+            linux_argv, _, _ = extension_manager.build_extension_invocation(
+                str(exe), ["install", "lfm3"], root=root, windows=False
+            )
+            self.assertEqual(linux_argv, [str(exe), "extension", "install", "lfm3"])
+
+    def test_extension_job_manager_streams_logs_and_cancels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            exe = Path(directory) / "gufo.exe"
+            exe.touch()
+            mgr = extension_manager.ExtensionJobManager()
+            with patch("extension_manager.build_extension_invocation") as build_inv, \
+                 patch("extension_manager.inspect_executable", return_value={"available": True, "options": []}):
+                build_inv.return_value = ([sys.executable, "-u", "-c", "print('building...'); print('done')"], dict(os.environ), Path(directory))
+                mgr.start(str(exe), "install", ["install", "lfm3"], target="lfm3")
+                for _ in range(100):
+                    snap = mgr.snapshot()
+                    if snap["state"] != "running":
+                        break
+                    threading.Event().wait(0.05)
+                self.assertEqual(snap["state"], "succeeded")
+                self.assertEqual(snap["logs"], ["building...", "done"])
+                self.assertEqual(snap["extensions"], {"available": True, "options": []})
+
+                # Cancellation stops a long-running build cleanly.
+                build_inv.return_value = ([sys.executable, "-u", "-c", "import time; print('working', flush=True); time.sleep(30)"], dict(os.environ), Path(directory))
+                mgr.start(str(exe), "update", ["update"], target="all")
+                for _ in range(50):
+                    if mgr.snapshot()["logs"]:
+                        break
+                    threading.Event().wait(0.05)
+                mgr.cancel()
+                for _ in range(100):
+                    snap = mgr.snapshot()
+                    if snap["state"] != "running":
+                        break
+                    threading.Event().wait(0.05)
+                self.assertEqual(snap["state"], "cancelled")
+
+    def test_extension_management_routes_enforce_auth_trust_and_stopped_server(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            exe = root / "gufo.exe"
+            exe.touch()
+            manager = Mock(spec=ProcessManager)
+            manager.snapshot.return_value = {"state": "stopped", "pid": None}
+            manager.stop.return_value = {"state": "stopped"}
+            ext_mgr = Mock(spec=extension_manager.ExtensionJobManager)
+            ext_mgr.snapshot.return_value = {"state": "idle", "logs": []}
+            ext_mgr.start.return_value = {"state": "running", "logs": []}
+            ext_mgr.cancel.return_value = {"state": "cancelled", "logs": []}
+
+            with patch("server.inspect_executable", return_value={"available": True, "options": [], "extensions": [], "draft_options": {}}), \
+                 patch("server.list_catalog", return_value={"available": True, "extensions": [{"name": "lfm3", "newest": "0.4.0"}], "registry_error": ""}):
+                app = create_app(root / "settings.json", manager, threading.Event(), extension_manager=ext_mgr)
+                client = app.test_client()
+                token = re.search(r'name="gufo-token" content="([^"]+)"', client.get("/").text)[1]
+                headers = {"X-Gufo-Token": token}
+
+                for method, path in (
+                    ("post", "/api/extensions/catalog"),
+                    ("get", "/api/extensions/job"),
+                    ("post", "/api/extensions/install"),
+                    ("post", "/api/extensions/update"),
+                    ("post", "/api/extensions/remove"),
+                    ("post", "/api/extensions/cancel"),
+                ):
+                    self.assertEqual(getattr(client, method)(path).status_code, 403)
+
+                cat = client.post("/api/extensions/catalog", json={"executable": str(exe)}, headers=headers)
+                self.assertEqual(cat.status_code, 200)
+                self.assertEqual(cat.json["extensions"][0]["name"], "lfm3")
+
+                # Unreviewed Git URL requires confirmed=True.
+                git_src = "https://github.com/franzmoca/hy4-gufo-extension@abc1234"
+                unconfirmed = client.post(
+                    "/api/extensions/install",
+                    json={"executable": str(exe), "source": git_src, "confirmed": False},
+                    headers=headers,
+                )
+                self.assertEqual(unconfirmed.status_code, 400)
+                self.assertIn("Confirm", unconfirmed.json["error"])
+
+                confirmed = client.post(
+                    "/api/extensions/install",
+                    json={"executable": str(exe), "source": git_src, "replace_builtin": True, "confirmed": True},
+                    headers=headers,
+                )
+                self.assertEqual(confirmed.status_code, 200)
+                ext_mgr.start.assert_called_with(
+                    str(exe), "install", ["install", git_src, "--replace-builtin", "--yes"], target=git_src
+                )
+
+                # Registry install does not pass --yes.
+                reg = client.post(
+                    "/api/extensions/install",
+                    json={"executable": str(exe), "source": "lfm3"},
+                    headers=headers,
+                )
+                self.assertEqual(reg.status_code, 200)
+                ext_mgr.start.assert_called_with(str(exe), "install", ["install", "lfm3"], target="lfm3")
+
+                # Update all (with empty body using document executable) must not deadlock.
+                upd = client.post("/api/extensions/update", json={}, headers=headers)
+                self.assertEqual(upd.status_code, 200)
+
+                # Remove validates name and starts remove.
+                self.assertEqual(
+                    client.post("/api/extensions/remove", json={"name": "../bad"}, headers=headers).status_code, 400
+                )
+                rem = client.post(
+                    "/api/extensions/remove", json={"executable": str(exe), "name": "hy4flash"}, headers=headers
+                )
+                self.assertEqual(rem.status_code, 200)
+                ext_mgr.start.assert_called_with(str(exe), "remove", ["remove", "hy4flash"], target="hy4flash")
+
+                # Active server blocks management actions.
+                manager.snapshot.return_value = {"state": "ready", "pid": 42}
+                blocked = client.post("/api/extensions/update", json={"executable": str(exe)}, headers=headers)
+                self.assertEqual(blocked.status_code, 400)
+                self.assertIn("Stop the running Gufo server", blocked.json["error"])
 
 
 if __name__ == "__main__":

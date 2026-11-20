@@ -611,3 +611,84 @@ test("refreshing extensions updates dynamic provider options and command preview
   assert.equal(env.$("extension-options-section").hidden, false);
   assert.ok(env.window.document.querySelector('[data-provider-option="--dfly-model"]'));
 });
+
+test("extensions manager dialog enforces trust confirmation for Git URLs and streams job updates", async (t) => {
+  const env = await setup(t);
+  const { createExtensionsDialog } = await env.use("extensions-dialog.js");
+  const requests = [];
+  let updatedInfo = null;
+  let serverActive = false;
+
+  env.window.fetch = async (url, options) => {
+    const body = options?.body ? JSON.parse(options.body) : null;
+    requests.push([url, body]);
+    if (url === "/api/extensions/catalog") {
+      return {
+        ok: true,
+        json: async () => ({
+          available: true,
+          registry_error: "",
+          extensions: [
+            { name: "qwen38", version: "0.3.29", builtin: true, installed: false, status: "ready" },
+            { name: "lfm3", newest: "0.4.0", builtin: false, installed: false, description: "LFM3 model" },
+            { name: "hy4flash", version: "0.1.0", builtin: false, installed: true, status: "needs update", sourceKind: "git", source: "https://github.com/franzmoca/hy4-gufo-extension", revision: "abc1234" },
+          ],
+        }),
+      };
+    }
+    if (url === "/api/extensions/job") {
+      return { ok: true, json: async () => ({ state: "idle", logs: [] }) };
+    }
+    if (url === "/api/extensions/install") {
+      return {
+        ok: true,
+        json: async () => ({
+          state: "succeeded",
+          operation: "install",
+          target: body.source,
+          exit_code: 0,
+          logs: ["Configuring...", "Installed"],
+          extensions: { available: true, extensions: [], options: [{ name: "--dfly-model", type: "path", help: "DFly2", providers: ["hy4flash"], extensions: ["hy4flash"], draft_mode: "dfly" }], draft_options: {} },
+        }),
+      };
+    }
+    assert.fail(`Unexpected request ${url}`);
+  };
+
+  const dialog = createExtensionsDialog({
+    getExecutable: () => "C:\\gufo\\gufo.exe",
+    isServerActive: () => serverActive,
+    onExtensionsUpdated: (info) => { updatedInfo = info; },
+  });
+
+  await dialog.open();
+  assert.equal(env.$("extensions-dialog").open, true);
+  assert.match(env.$("ext-catalog-list").textContent, /lfm3/);
+  assert.match(env.$("ext-catalog-list").textContent, /Needs update/);
+
+  // Git URL install opens the trust confirmation dialog first.
+  const gitUrl = "https://github.com/franzmoca/hy4-gufo-extension@abc1234";
+  env.$("ext-source-input").value = gitUrl;
+  env.$("ext-install-button").click();
+  assert.equal(env.$("extension-trust-dialog").open, true);
+  assert.equal(env.$("extension-trust-source").textContent, gitUrl);
+  env.$("extension-trust-dialog").close("cancel"); await tick();
+  assert.equal(requests.filter(([url]) => url === "/api/extensions/install").length, 0);
+
+  // Confirming trust sends confirmed: true and propagates refreshed extensions.
+  env.$("ext-install-button").click();
+  env.$("extension-trust-dialog").close("confirm"); await tick();
+  const installCall = requests.find(([url]) => url === "/api/extensions/install");
+  assert.ok(installCall);
+  assert.equal(installCall[1].confirmed, true);
+  assert.equal(installCall[1].source, gitUrl);
+  assert.equal(env.$("ext-job-logs").textContent, "Configuring...\nInstalled");
+  assert.ok(updatedInfo);
+
+  // When server becomes active, extension action buttons disable and warning shows.
+  serverActive = true;
+  dialog.syncServerState();
+  assert.equal(env.$("ext-server-warning").hidden, false);
+  assert.equal(env.$("ext-install-button").disabled, true);
+  assert.equal(env.$("ext-update-all").disabled, true);
+});

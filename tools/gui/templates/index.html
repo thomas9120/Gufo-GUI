@@ -69,7 +69,10 @@
           <p class="hint" data-i18n="Select the built executable alongside its runtime libraries.">Select the built executable alongside its runtime libraries.</p>
           <div class="extensions-bar">
             <span id="extensions-summary" class="hint" data-i18n="Extensions: —">Extensions: —</span>
-            <button type="button" id="refresh-extensions" class="quiet" data-i18n="Refresh">Refresh</button>
+            <div class="extensions-actions">
+              <button type="button" id="refresh-extensions" class="quiet" data-i18n="Refresh">Refresh</button>
+              <button type="button" id="manage-extensions" class="quiet" data-i18n="Manage…">Manage…</button>
+            </div>
           </div>
           <p id="extensions-warning" class="hint extensions-warning" hidden></p>
           <div id="extension-options-section" hidden>
@@ -167,6 +170,7 @@
   </main>
   {% include "preset-dialogs.html" %}
   {% include "busy-dialog.html" %}
+  {% include "extensions-dialog.html" %}
   <dialog id="file-dialog" aria-labelledby="picker-title">
     <div class="dialog-heading"><h2 id="picker-title" data-i18n="Choose a file">Choose a file</h2><button type="button" id="close-picker" class="quiet" aria-label="Close file picker" data-i18n-aria-label="Close file picker">✕</button></div>
     <div id="picker-roots" class="roots"></div>

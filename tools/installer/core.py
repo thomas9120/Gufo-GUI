@@ -1,7 +1,7 @@
 """Installer operations shared by the TUI and plain CLI. No Textual dependency."""
 
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 import json
 import os
@@ -30,6 +30,7 @@ class Options:
     rocm: str = ""
     vcpkg: str = ""
     jobs: int = 4
+    extension_dirs: list[str] = field(default_factory=list)
 
     def validate(self, root=ROOT):
         if type(self.jobs) is not int or not 1 <= self.jobs <= 64:
@@ -40,6 +41,16 @@ class Options:
                 raise ValueError(f"{name}: enter a single line path.")
         if self.gufo_path and Path(self.gufo_path).expanduser().resolve() == root.resolve():
             raise ValueError("Choose a separate folder for the Gufo engine.")
+        if not isinstance(self.extension_dirs, list):
+            raise ValueError("extension_dirs: expected a list of folder paths.")
+        cleaned = []
+        for item in self.extension_dirs:
+            if not isinstance(item, str) or any(ord(c) < 32 for c in item) or ";" in item:
+                raise ValueError("extension_dirs: enter single-line folder paths without semicolons.")
+            stripped = item.strip()
+            if stripped:
+                cleaned.append(stripped)
+        self.extension_dirs = cleaned
         return self
 
 
@@ -221,6 +232,8 @@ class Installer:
             for key, value in (("GufoPath", options.gufo_path), ("Rocm", options.rocm), ("Vcpkg", options.vcpkg)):
                 if value:
                     command += [f"-{key}", str(Path(value).expanduser().resolve())]
+            if options.extension_dirs:
+                command += ["-ExtensionDirs", ";".join(str(Path(path).expanduser().resolve()) for path in options.extension_dirs)]
             if plan_path:
                 command += ["-CheckOnly", "-PlanJson", str(plan_path)]
             elif action != "update":
@@ -233,6 +246,8 @@ class Installer:
             for key, value in (("gufo-path", options.gufo_path), ("rocm", options.rocm)):
                 if value:
                     command += [f"--{key}", str(Path(value).expanduser().resolve())]
+            for path in options.extension_dirs:
+                command += ["--extension-dir", str(Path(path).expanduser().resolve())]
             if plan_path:
                 command += ["--check-only", "--plan-json", str(plan_path)]
             elif action != "update":

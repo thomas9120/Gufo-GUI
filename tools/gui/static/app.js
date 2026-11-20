@@ -5,10 +5,11 @@ import { createPresets } from "./presets.js";
 import { initFilePicker } from "./file-picker.js";
 import { createRuntime } from "./runtime.js";
 import { confirmBusyAction } from "./busy-actions.js";
+import { createExtensionsDialog } from "./extensions-dialog.js";
 
 initLanguage();
 
-let form, presets, busy = false, closed = false;
+let form, presets, extensionsDialog, busy = false, closed = false;
 let previewTimer, previewVersion = 0, copiedTimer;
 let extensionsTimer, extensionsVersion = 0, inspectedExecutable = null;
 const runtime = createRuntime(updateControls);
@@ -21,6 +22,7 @@ function updateControls() {
   $("stop-button").disabled = busy || !active || state.state === "stopping" || closed;
   $("exit-button").disabled = busy || closed;
   presets?.render();
+  extensionsDialog?.syncServerState();
   const different = active && state.running && form && !sameSettings(form.values(), state.running.settings);
   text($("next-launch-note"), different
     ? "These settings differ from the running server. Changes apply to the next launch."
@@ -118,6 +120,15 @@ updateControls();
     inspectedExecutable = result.settings.executable;
     form = createSettingsForm(result.settings, result.families, result.modes, edited, result.extensions);
     presets = createPresets(result, form, action, edited);
+    extensionsDialog = createExtensionsDialog({
+      getExecutable: () => form.values().executable,
+      isServerActive: () => runtime.state.pid != null || ["loading", "ready", "stopping"].includes(runtime.state.state),
+      onExtensionsUpdated: (info) => {
+        inspectedExecutable = form.values().executable;
+        form.setExtensions(info);
+        edited();
+      },
+    });
     initFilePicker(result.home);
     text($("settings-location"), "Settings · {path}", { path: result.path });
     edited();

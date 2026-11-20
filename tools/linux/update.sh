@@ -8,20 +8,23 @@ stop_label="Update"
 update_usage() {
   cat <<'EOF'
 Usage: update-linux.sh [options]
-  --gufo-path PATH  Official Gufo checkout (default: the folder saved by setup)
-  --rocm PATH       ROCm installation prefix (default: the saved or detected prefix)
-  --jobs N          Parallel build jobs, 1-64 (default: 4)
-  --check-only      Inspect prerequisites and source without updating
-  --plan-json PATH  Write the machine-readable plan with --check-only
+  --gufo-path PATH      Official Gufo checkout (default: the folder saved by setup)
+  --rocm PATH           ROCm installation prefix (default: the saved or detected prefix)
+  --extension-dir PATH  Compiled-in extension source directory (repeatable)
+  --jobs N              Parallel build jobs, 1-64 (default: 4)
+  --check-only          Inspect prerequisites and source without updating
+  --plan-json PATH      Write the machine-readable plan with --check-only
 EOF
 }
 
 parse_update_args() {
   gufo_path="" rocm="" jobs=4 check_only=0 plan_json=""
+  extension_dirs=()
   while (( $# )); do
     case $1 in
       --gufo-path) [[ $# -ge 2 ]] || die "$1 needs a value."; gufo_path=$2; shift ;;
       --rocm) [[ $# -ge 2 ]] || die "$1 needs a value."; rocm=$2; shift ;;
+      --extension-dir) [[ $# -ge 2 ]] || die "$1 needs a value."; extension_dirs+=("$2"); shift ;;
       --jobs) [[ $# -ge 2 ]] || die "$1 needs a value."; jobs=$2; shift ;;
       --check-only) check_only=1 ;;
       --plan-json) [[ $# -ge 2 ]] || die "$1 needs a value."; plan_json=$2; shift ;;
@@ -60,6 +63,7 @@ run_linux_update() {
   build_gufo
   installer_phase verify
   verify_engine
+  update_installed_extensions
   installer_phase complete
   printf '\n'
   success "Update complete: $engine"

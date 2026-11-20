@@ -7,22 +7,25 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 setup_usage() {
   cat <<'EOF'
 Usage: setup-linux.sh [options]
-  --gufo-path PATH  Official Gufo checkout (default: ./gufo or the saved folder)
-  --rocm PATH       ROCm installation prefix (default: detect /opt/rocm or /usr)
-  --jobs N          Parallel build jobs, 1-64 (default: 4)
-  --check-only      Show the plan without installing or building
-  --plan-json PATH  Write the machine-readable plan with --check-only
-  --yes             Accept the plan without asking
-  --no-launch       Do not open the launcher when setup completes
+  --gufo-path PATH      Official Gufo checkout (default: ./gufo or the saved folder)
+  --rocm PATH           ROCm installation prefix (default: detect /opt/rocm or /usr)
+  --extension-dir PATH  Compiled-in extension source directory (repeatable)
+  --jobs N              Parallel build jobs, 1-64 (default: 4)
+  --check-only          Show the plan without installing or building
+  --plan-json PATH      Write the machine-readable plan with --check-only
+  --yes                 Accept the plan without asking
+  --no-launch           Do not open the launcher when setup completes
 EOF
 }
 
 parse_setup_args() {
   gufo_path="" rocm="" jobs=4 check_only=0 assume_yes=0 no_launch=0 plan_json=""
+  extension_dirs=()
   while (( $# )); do
     case $1 in
       --gufo-path) [[ $# -ge 2 ]] || die "$1 needs a value."; gufo_path=$2; shift ;;
       --rocm) [[ $# -ge 2 ]] || die "$1 needs a value."; rocm=$2; shift ;;
+      --extension-dir) [[ $# -ge 2 ]] || die "$1 needs a value."; extension_dirs+=("$2"); shift ;;
       --jobs) [[ $# -ge 2 ]] || die "$1 needs a value."; jobs=$2; shift ;;
       --check-only) check_only=1 ;;
       --plan-json) [[ $# -ge 2 ]] || die "$1 needs a value."; plan_json=$2; shift ;;
