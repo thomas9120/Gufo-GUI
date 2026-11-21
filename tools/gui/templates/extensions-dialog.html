@@ -33,12 +33,14 @@
   <pre id="ext-job-logs" data-i18n="No extension task running.">No extension task running.</pre>
 </dialog>
 <dialog id="extension-trust-dialog" class="small-dialog" aria-labelledby="extension-trust-title">
-  <div class="dialog-heading"><h2 id="extension-trust-title" data-i18n="Trust unreviewed extension source?">Trust unreviewed extension source?</h2></div>
-  <p><code id="extension-trust-source"></code></p>
-  <p class="hint" data-i18n="This source has not been reviewed by the Gufo maintainers. Installing it runs its build scripts and native code with your user permissions.">This source has not been reviewed by the Gufo maintainers. Installing it runs its build scripts and native code with your user permissions.</p>
-  <p class="hint" data-i18n="Review the repository or folder contents before continuing.">Review the repository or folder contents before continuing.</p>
-  <div class="dialog-footer actions">
-    <button type="button" data-choice="cancel" data-i18n="Cancel">Cancel</button>
-    <button type="button" data-choice="confirm" class="primary" data-i18n="Install anyway">Install anyway</button>
-  </div>
+  <form method="dialog">
+    <div class="dialog-heading"><h2 id="extension-trust-title" data-i18n="Trust unreviewed extension source?">Trust unreviewed extension source?</h2></div>
+    <p><code id="extension-trust-source"></code></p>
+    <p class="hint" data-i18n="This source has not been reviewed by the Gufo maintainers. Installing it runs its build scripts and native code with your user permissions.">This source has not been reviewed by the Gufo maintainers. Installing it runs its build scripts and native code with your user permissions.</p>
+    <p class="hint" data-i18n="Review the repository or folder contents before continuing.">Review the repository or folder contents before continuing.</p>
+    <div class="dialog-footer actions">
+      <button value="cancel" autofocus data-i18n="Cancel">Cancel</button>
+      <button value="confirm" class="primary" data-i18n="Install anyway">Install anyway</button>
+    </div>
+  </form>
 </dialog>

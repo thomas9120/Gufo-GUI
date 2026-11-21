@@ -451,6 +451,15 @@ class ExtensionsTest(unittest.TestCase):
         ):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 extension_manager.parse_extension_source(invalid)
+        # A browser page URL is rejected with the pinned form to paste instead.
+        with self.assertRaises(ValueError) as caught:
+            extension_manager.parse_extension_source(
+                "https://github.com/franzmoca/hy4-gufo-extension/commit/d229a727eb26e9868e0daa08860c83591239d30f"
+            )
+        self.assertEqual(
+            str(caught.exception),
+            "Pin a commit or tag: use https://github.com/franzmoca/hy4-gufo-extension@d229a727eb26e9868e0daa08860c83591239d30f.",
+        )
 
     def test_windows_toolchain_wrapper_is_used_for_builds_only(self):
         with tempfile.TemporaryDirectory() as directory:

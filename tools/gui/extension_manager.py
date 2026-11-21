@@ -22,6 +22,7 @@ _CATALOG_TIMEOUT_SECONDS = 20
 _EXTENSION_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 _REGISTRY_SPEC = re.compile(r"^([a-z][a-z0-9_]*)(@([0-9]+\.[0-9]+\.[0-9]+))?$")
 _URL_PREFIXES = ("https://", "http://", "ssh://", "file://", "git@")
+_WEB_REVISION_URL = re.compile(r"^(?P<repo>.+?)/(?:commit|tree)/(?P<revision>[0-9A-Za-z._-]+)/?$")
 
 
 def parse_extension_source(raw):
@@ -39,6 +40,10 @@ def parse_extension_source(raw):
     if text.startswith(_URL_PREFIXES):
         at = text.rfind("@")
         if at == -1 or at + 1 == len(text) or (text.startswith("git@") and at < 4):
+            # A GitHub commit page pasted from the browser: show the pinned form instead.
+            page = _WEB_REVISION_URL.match(text)
+            if page:
+                raise ValueError(f"Pin a commit or tag: use {page.group('repo')}@{page.group('revision')}.")
             raise ValueError(f"Pin a commit or tag: {text}@<commit-or-tag>.")
         return {"kind": "git", "source": text, "trusted": False}
 

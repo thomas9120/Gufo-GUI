@@ -34,6 +34,15 @@ export async function setup(t, language = "en") {
   window.HTMLDialogElement.prototype.close = function (value = this.returnValue) {
     this.returnValue = value; this.open = false; this.dispatchEvent(new window.Event("close"));
   };
+  // jsdom does not implement <form method="dialog">: close with the button value like a browser does.
+  window.document.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("button");
+    const form = button?.form;
+    if (!form || form.getAttribute("method") !== "dialog") return;
+    event.preventDefault();
+    const dialog = form.closest("dialog");
+    if (dialog?.open) dialog.close(button.value ?? dialog.returnValue);
+  }, true);
   const modules = new Map();
   async function load(name) {
     if (modules.has(name)) return modules.get(name);

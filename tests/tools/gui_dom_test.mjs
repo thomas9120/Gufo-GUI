@@ -672,12 +672,15 @@ test("extensions manager dialog enforces trust confirmation for Git URLs and str
   env.$("ext-install-button").click();
   assert.equal(env.$("extension-trust-dialog").open, true);
   assert.equal(env.$("extension-trust-source").textContent, gitUrl);
-  env.$("extension-trust-dialog").close("cancel"); await tick();
+  env.$("extension-trust-dialog").querySelector("button[value='cancel']").click(); await tick();
+  assert.equal(env.$("extension-trust-dialog").open, false);
   assert.equal(requests.filter(([url]) => url === "/api/extensions/install").length, 0);
 
   // Confirming trust sends confirmed: true and propagates refreshed extensions.
   env.$("ext-install-button").click();
-  env.$("extension-trust-dialog").close("confirm"); await tick();
+  assert.equal(env.$("extension-trust-dialog").open, true);
+  env.$("extension-trust-dialog").querySelector("button[value='confirm']").click(); await tick();
+  assert.equal(env.$("extension-trust-dialog").open, false);
   const installCall = requests.find(([url]) => url === "/api/extensions/install");
   assert.ok(installCall);
   assert.equal(installCall[1].confirmed, true);
