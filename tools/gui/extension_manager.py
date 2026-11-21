@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import signal
 import subprocess
+import sys
 import threading
 import time
 
@@ -111,7 +112,9 @@ def build_extension_invocation(executable, subcommand_args, *, root=ROOT, window
                 env["PATH"] = os.pathsep.join(path_entries + [env.get("PATH", "")])
             env["GUFO_VCVARS"] = str(vcvars)
             env["GUFO_EXE"] = str(exe_path)
-            return ["cmd.exe", "/d", "/c", str(wrapper), *subcommand_args], env, cwd
+            env["GUFO_PYTHON"] = sys.executable
+            env["GUFO_EXTENSION_ARGV_JSON"] = json.dumps([str(exe_path), "extension", *subcommand_args])
+            return ["cmd.exe", "/d", "/c", "call", str(wrapper)], env, cwd
     return [str(exe_path), "extension", *subcommand_args], env, cwd
 
 

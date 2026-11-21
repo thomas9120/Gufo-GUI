@@ -124,6 +124,7 @@ run_linux_setup() {
   build_gufo
   installer_phase verify
   verify_engine
+  update_installed_extensions
   installer_phase gui
   setup_command bash "$root/tools/linux/gui.sh" --python "$python_bin" --prepare-only
   printf '\n'

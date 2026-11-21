@@ -68,7 +68,7 @@ def build_command(values, *, check_files=False, extension_info=None):
                     raise ValueError(f"{flag}: enter a single line of text.")
         if value is True:
             provider_args.append(flag)
-        elif value not in (False, None, ""):
+        elif value is not False and value is not None and value != "":
             provider_args.append(f"{flag}={value}")
     command = [settings["executable"], "serve", "--host", settings["host"],
                "--port", str(settings["port"]), "--sessions", str(settings["sessions"]),

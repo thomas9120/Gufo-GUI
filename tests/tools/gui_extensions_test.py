@@ -25,14 +25,14 @@ from settings import DEFAULTS, validate_settings
 HY4_HELP = """Usage: gufo serve llm [OPTIONS]
 
 Speculative:
-      --speculative MODE       HTTP draft backend: dspark, dflash2, mtp, or off
+      --speculative <MODE>     HTTP draft backend: dspark, dflash2, mtp, or off
 
 Provider options:
-      --dfly-draft-tokens N    Most tokens DFly2 drafts per step, 1 to 7 (default 7) (hy4flash)
-      --dfly-model PATH        DFly2 drafter: its safetensors file or checkpoint directory (hy4flash)
-      --custom-scale X         Scale factor
+      --dfly-draft-tokens <N>  Most tokens DFly2 drafts per step, 1 to 7 (default 7) (hy4flash)
+      --dfly-model <PATH>      DFly2 drafter: its safetensors file or checkpoint directory (hy4flash)
+      --custom-scale <X>       Scale factor
                                for testing wrapped lines (hy4flash)
-      --custom-tag VALUE       Tag text (hy4flash, other)
+      --custom-tag <VALUE>     Tag text (hy4flash, other)
       --enable-fast            Fast mode toggle (hy4flash)
 
 General:
@@ -312,6 +312,29 @@ class ExtensionsTest(unittest.TestCase):
                     extension_info=ext_info,
                 )
 
+            # Explicit numeric zero (int 0 and float 0.0) must not be dropped as False.
+            zero_cmd = build_command(
+                DEFAULTS | {
+                    "provider_options": {
+                        "--dfly-draft-tokens": 0,
+                        "--custom-scale": 0.0,
+                        "--enable-fast": False,
+                    }
+                },
+                extension_info={
+                    "available": True,
+                    "options": [
+                        {"name": "--dfly-draft-tokens", "type": "integer"},
+                        {"name": "--custom-scale", "type": "number"},
+                        {"name": "--enable-fast", "type": "boolean"},
+                    ],
+                    "draft_options": {},
+                },
+            )
+            self.assertIn("--dfly-draft-tokens=0", zero_cmd)
+            self.assertIn("--custom-scale=0.0", zero_cmd)
+            self.assertNotIn("--enable-fast", zero_cmd)
+
     def test_browse_directory_path_kind_shows_non_gguf_files_and_folders(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -457,10 +480,11 @@ class ExtensionsTest(unittest.TestCase):
             argv, env, cwd = extension_manager.build_extension_invocation(
                 str(exe), ["install", "lfm3"], root=root, windows=True
             )
-            self.assertEqual(argv[:4], ["cmd.exe", "/d", "/c", str(wrapper)])
-            self.assertEqual(argv[4:], ["install", "lfm3"])
+            self.assertEqual(argv, ["cmd.exe", "/d", "/c", "call", str(wrapper)])
+            self.assertEqual(json.loads(env["GUFO_EXTENSION_ARGV_JSON"]), [str(exe), "extension", "install", "lfm3"])
             self.assertEqual(env["GUFO_VCVARS"], str(vcvars))
             self.assertEqual(env["GUFO_EXE"], str(exe))
+            self.assertEqual(env["GUFO_PYTHON"], sys.executable)
             self.assertEqual(env["HIP_PATH"], str(root / "rocm").replace("\\", "/"))
             self.assertEqual(env["VCPKG_ROOT"], str(root / "vcpkg").replace("\\", "/"))
             self.assertEqual(cwd, root)
@@ -476,6 +500,35 @@ class ExtensionsTest(unittest.TestCase):
                 str(exe), ["install", "lfm3"], root=root, windows=False
             )
             self.assertEqual(linux_argv, [str(exe), "extension", "install", "lfm3"])
+
+    @unittest.skipUnless(os.name == "nt", "Windows cmd.exe wrapper test")
+    def test_windows_wrapper_executes_when_both_wrapper_and_extension_paths_have_spaces(self):
+        repo_wrapper = Path(__file__).resolve().parents[2] / "tools/windows/run-extension.cmd"
+        with tempfile.TemporaryDirectory(prefix="gufo launcher & space ") as directory:
+            root = Path(directory)
+            wrapper = root / "tools" / "windows" / "run-extension.cmd"
+            wrapper.parent.mkdir(parents=True)
+            wrapper.write_text(repo_wrapper.read_text(encoding="utf-8"), encoding="utf-8")
+            vs = root / "vs & dir"
+            vcvars = vs / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
+            vcvars.parent.mkdir(parents=True)
+            vcvars.write_text("@echo off\r\nexit /b 0\r\n", encoding="utf-8")
+            ext_dir = root / "my extension & folder"
+            ext_dir.mkdir()
+            recorded = root / "argv.json"
+            fake_gufo = root / "fake gufo.cmd"
+            fake_gufo.write_text(
+                f'@echo off\r\n"{sys.executable}" -c "import json, sys; open(r\'{recorded}\', \'w\').write(json.dumps(sys.argv[1:]))" %*\r\n',
+                encoding="utf-8",
+            )
+            (root / "build").mkdir()
+            (root / "build" / "windows-setup.json").write_text(json.dumps({"VS": str(vs)}), encoding="utf-8")
+            argv, env, cwd = extension_manager.build_extension_invocation(
+                str(fake_gufo), ["install", str(ext_dir), "--yes"], root=root, windows=True
+            )
+            proc = subprocess.run(argv, cwd=cwd, env=env, capture_output=True, text=True, timeout=15)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertEqual(json.loads(recorded.read_text(encoding="utf-8")), ["extension", "install", str(ext_dir), "--yes"])
 
     def test_extension_job_manager_streams_logs_and_cancels(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -519,6 +572,7 @@ class ExtensionsTest(unittest.TestCase):
             manager.snapshot.return_value = {"state": "stopped", "pid": None}
             manager.stop.return_value = {"state": "stopped"}
             ext_mgr = Mock(spec=extension_manager.ExtensionJobManager)
+            ext_mgr.is_running.return_value = False
             ext_mgr.snapshot.return_value = {"state": "idle", "logs": []}
             ext_mgr.start.return_value = {"state": "running", "logs": []}
             ext_mgr.cancel.return_value = {"state": "cancelled", "logs": []}
@@ -592,6 +646,20 @@ class ExtensionsTest(unittest.TestCase):
                 blocked = client.post("/api/extensions/update", json={"executable": str(exe)}, headers=headers)
                 self.assertEqual(blocked.status_code, 400)
                 self.assertIn("Stop the running Gufo server", blocked.json["error"])
+
+                # Active extension job blocks starting the Gufo server.
+                manager.snapshot.return_value = {"state": "stopped", "pid": None}
+                ext_mgr.is_running.return_value = True
+                model = root / "model.gguf"
+                model.write_bytes(b"GGUF")
+                blocked_start = client.post(
+                    "/api/start",
+                    json={"settings": DEFAULTS | {"executable": str(exe), "model": str(model)}, "preset_id": "default"},
+                    headers=headers,
+                )
+                self.assertEqual(blocked_start.status_code, 400)
+                self.assertIn("running extension task", blocked_start.json["error"])
+                manager.start.assert_not_called()
 
 
 if __name__ == "__main__":

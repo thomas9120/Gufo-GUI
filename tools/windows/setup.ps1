@@ -409,7 +409,7 @@ function Update-InstalledExtensions([string]$Engine, $Tools) {
     $env:GUFO_EXE = $Engine
     $vsInstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
     $env:PATH = "$vsInstaller;$($Tools.Rocm)\bin;$($Tools.Rocm)\lib\llvm\bin;$env:PATH"
-    Invoke-SetupCommand "cmd.exe" @("/d", "/c", $wrapper, "update")
+    Invoke-SetupCommand "cmd.exe" @("/d", "/c", "call", $wrapper, "update")
   } else {
     Invoke-SetupCommand $Engine @("extension", "update")
   }
@@ -481,6 +481,7 @@ function Invoke-WindowsSetup {
     Invoke-SetupCommand $engine @("--version")
     # Run outside the build script's compiler environment, just as the GUI will.
     Invoke-SetupCommand $engine @("diagnose", "--section", "gpu")
+    Update-InstalledExtensions $engine $tools
     Write-InstallerPhase "gui"
     Invoke-SetupCommand $shell ($options + @("$PSScriptRoot\gui.ps1", "-Python", $tools.Python, "-PrepareOnly"))
     Write-InstallerPhase "complete"

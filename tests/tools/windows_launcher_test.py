@@ -209,7 +209,8 @@ Assert ($events.Count -eq 0) 'Build continued after failed pull'
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = [json.loads(line) for line in log.read_text().splitlines()]
         self.assertEqual(calls, [["--preset", "windows-release",
-                                 "-DCMAKE_MAKE_PROGRAM=" + environment["GUFO_NINJA"], "-DXRT_DIR=" + environment["XRT_DIR"], "-DGUFO_ENABLE_WARNINGS=OFF"],
+                                 "-DCMAKE_MAKE_PROGRAM=" + environment["GUFO_NINJA"], "-DXRT_DIR=" + environment["XRT_DIR"],
+                                 "-DGUFO_ENABLE_WARNINGS=OFF", "-DGUFO_EXTENSION_DIRS="],
                                 ["--build", "--preset", "windows-release", "--target", "gufo", "--parallel", "3"]])
         environment["TEST_FAIL"] = "7"
         self.assertEqual(run().returncode, 7)
@@ -332,6 +333,7 @@ Assert (-not (Test-Path -LiteralPath (Join-Path $vcpkgPath 'bootstrapped'))) 'Un
             "Assert ($LASTEXITCODE -eq 0) 'Build wrapper failed'\n")
         calls = [json.loads(line) for line in (source / "calls.jsonl").read_text().splitlines()]
         self.assertEqual(calls[0][:2], ["--preset", "windows-release"])
+        self.assertIn("-DGUFO_EXTENSION_DIRS=", calls[0])
         self.assertEqual(Path(patch_log.read_text()), self.root)
         self.assertNotIn('\\', patch_log.read_text())
         self.assertEqual((source / "build/windows-release/test.dll").read_bytes(), b"runtime")

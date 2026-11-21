@@ -56,6 +56,7 @@ export const messages = {
   "Stop the running Gufo server before managing extensions.": "管理扩展前，请先停止正在运行的 Gufo 服务。",
   "Confirm that you trust this unreviewed extension source before installing.": "安装未经审核的扩展前，请先确认您信任该来源。",
   "Wait for the current extension task to finish or cancel it first.": "请等待当前扩展任务完成，或先取消它。",
+  "Wait for the running extension task to finish or cancel it before starting Gufo.": "启动 Gufo 前，请等待当前扩展任务完成或先取消它。",
   "Disable RAM continuation cache": "\u7981\u7528 RAM \u7eed\u5199\u7f13\u5b58",
   "Choose the mode for your main model and a matching draft file. Flash-Next uses MTP; Qwen3.8-27B uses DFlash2; DeepSeek V4 Flash uses DSpark.": "\u9009\u62e9\u4e3b\u6a21\u578b\u7684\u6a21\u5f0f\u548c\u5339\u914d\u7684\u8349\u7a3f\u6587\u4ef6\u3002Flash-Next \u4f7f\u7528 MTP\uff1bQwen3.8-27B \u4f7f\u7528 DFlash2\uff1bDeepSeek V4 Flash \u4f7f\u7528 DSpark\u3002",
   "Auto uses the model default. Clients can override the level per request. The level is ignored while Thinking is Off.": "Auto \u4f7f\u7528\u6a21\u578b\u9ed8\u8ba4\u503c\u3002\u5ba2\u6237\u7aef\u53ef\u9010\u8bf7\u6c42\u8986\u76d6\u3002\u5173\u95ed\u601d\u8003\u65f6\u5ffd\u7565\u6b64\u9009\u9879\u3002",

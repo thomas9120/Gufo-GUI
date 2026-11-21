@@ -245,6 +245,8 @@ def create_app(config_path, manager, exit_event, ui_port=8090, extension_manager
         with action_lock:
             if shutting_down or exit_event.is_set():
                 abort(503, "The launcher is shutting down.")
+            if ext_manager.is_running():
+                raise ValueError("Wait for the running extension task to finish or cancel it before starting Gufo.")
             payload = request.get_json()
             if not isinstance(payload, dict) or set(payload) != {"settings", "preset_id"}:
                 raise ValueError("Provide launch settings and the selected preset.")

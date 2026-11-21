@@ -24,7 +24,7 @@ _HELP_HINT_TO_TYPE = {
     None: "boolean",
 }
 _HELP_OPTION_LINE = re.compile(
-    r"^\s+(--[a-z0-9][a-z0-9-]*)(?:\s+(N|X|PATH|VALUE)(?=\s|$))?(?:\s+(.*))?$"
+    r"^\s+(--[a-z0-9][a-z0-9-]*)(?:\s+<(N|X|PATH|VALUE)>(?=\s|$))?(?:\s+(.*))?$"
 )
 _HELP_PROVIDERS_SUFFIX = re.compile(
     r"\s*\(([a-zA-Z0-9_.-]+(?:,\s*[a-zA-Z0-9_.-]+)*)\)\s*$"

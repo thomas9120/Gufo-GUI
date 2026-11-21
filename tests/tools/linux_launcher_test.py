@@ -193,7 +193,7 @@ reject '*prerequisites are missing (ROCm*setup-linux.sh*' run_linux_update
         source = str(self.root / "official & engine")
         self.assertEqual(calls, [[source, "--preset", "release", "-DCMAKE_MAKE_PROGRAM=/tools/ninja",
                                   "-DGUFO_ENABLE_WARNINGS=OFF", f"-DCMAKE_PREFIX_PATH={rocm}", "-DXRT_DIR=/test/xrt",
-                                  f"-DCMAKE_HIP_COMPILER={compiler}"],
+                                  "-DGUFO_EXTENSION_DIRS=", f"-DCMAKE_HIP_COMPILER={compiler}"],
                                  [source, "--build", "--preset", "release", "--target", "gufo", "--parallel", "3"]])
         log.unlink()
         self.run_bash(body + "export TEST_FAIL=7\nreject '*build failed (exit 7)*' build_gufo\n")

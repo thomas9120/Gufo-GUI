@@ -281,8 +281,8 @@ build_gufo() {
       [[ -d $ext ]] || die "Extension source folder not found: $ext"
       joined+="${joined:+;}$(realpath -- "$ext")"
     done
-    configure+=("-DGUFO_EXTENSION_DIRS=$joined")
   fi
+  configure+=("-DGUFO_EXTENSION_DIRS=$joined")
   # A system Clang found first cannot compile HIP for gfx1151.
   if compiler=$(rocm_hip_compiler "$rocm_path"); then configure+=("-DCMAKE_HIP_COMPILER=$compiler"); fi
   (
