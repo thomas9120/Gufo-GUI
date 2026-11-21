@@ -51,6 +51,8 @@ export const messages = {
   "Cancelled": "已取消",
   "No extensions reported.": "未检测到扩展。",
   "Registry index unavailable: {detail}": "无法获取注册表索引：{detail}",
+  "Extension API {version}": "扩展 API {version}",
+  "This Gufo build has no extension SDK beside it, so extension modules cannot be built here. Rebuild Gufo, or set GUFO_SDK_DIR to the SDK it installed.": "当前 Gufo 构建旁没有扩展 SDK，无法在此构建扩展模块。请重新编译 Gufo，或将 GUFO_SDK_DIR 指向它安装的 SDK。",
   "Could not load extension catalog. {detail}": "无法加载扩展列表。{detail}",
   "Extension source: enter a registry name, pinned Git URL, or local folder.": "扩展来源：请输入注册表名称、固定版本的 Git 地址或本地目录。",
   "Stop the running Gufo server before managing extensions.": "管理扩展前，请先停止正在运行的 Gufo 服务。",

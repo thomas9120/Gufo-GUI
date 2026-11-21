@@ -8,7 +8,7 @@ export function isRegistrySource(source) {
   return REGISTRY_SPEC.test(String(source || "").trim());
 }
 
-export function createExtensionsDialog({ getExecutable, isServerActive, onExtensionsUpdated }) {
+export function createExtensionsDialog({ getExecutable, getExtensionInfo, isServerActive, onExtensionsUpdated }) {
   let pollTimer = null;
   let catalogVersion = 0;
   let jobState = { state: "idle", logs: [] };
@@ -18,9 +18,24 @@ export function createExtensionsDialog({ getExecutable, isServerActive, onExtens
     return jobState.state === "running";
   }
 
+  // The last inspection of the selected executable, from the launcher or this job.
+  function engineInfo() {
+    return jobState.extensions || getExtensionInfo?.() || {};
+  }
+
+  // A build with no SDK can never compile a module; Gufo reports that only after a failed install.
+  function sdkMissing() {
+    const info = engineInfo();
+    return info.available === true && info.sdk?.present === false;
+  }
+
   function updateButtons() {
-    const blocked = isServerActive() || runningJob();
+    const blocked = isServerActive() || runningJob() || sdkMissing();
     $("ext-server-warning").hidden = !isServerActive();
+    $("ext-sdk-warning").hidden = !sdkMissing();
+    const apiVersion = engineInfo().api_version;
+    $("ext-api-status").hidden = typeof apiVersion !== "string" || !apiVersion;
+    if (!$("ext-api-status").hidden) text($("ext-api-status"), "Extension API {version}", { version: apiVersion });
     $("ext-update-all").disabled = blocked;
     $("ext-install-button").disabled = blocked;
     $("ext-cancel-job").disabled = !runningJob();

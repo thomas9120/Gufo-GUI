@@ -695,3 +695,44 @@ test("extensions manager dialog enforces trust confirmation for Git URLs and str
   assert.equal(env.$("ext-install-button").disabled, true);
   assert.equal(env.$("ext-update-all").disabled, true);
 });
+
+test("extensions dialog reports the engine extension API and blocks builds without an SDK", async (t) => {
+  const env = await setup(t);
+  const { createExtensionsDialog } = await env.use("extensions-dialog.js");
+  env.window.fetch = async (url) => {
+    if (url === "/api/extensions/catalog") {
+      return {
+        ok: true,
+        json: async () => ({
+          available: true,
+          registry_error: "",
+          extensions: [{ name: "lfm3", newest: "0.4.0", builtin: false, installed: false }],
+        }),
+      };
+    }
+    if (url === "/api/extensions/job") return { ok: true, json: async () => ({ state: "idle", logs: [] }) };
+    assert.fail(`Unexpected request ${url}`);
+  };
+
+  let info = { available: true, api_version: "0.3.35", sdk: { present: true, build_id: "build" }, extensions: [] };
+  const dialog = createExtensionsDialog({
+    getExecutable: () => "C:\\gufo\\gufo.exe",
+    getExtensionInfo: () => info,
+    isServerActive: () => false,
+    onExtensionsUpdated: () => {},
+  });
+  await dialog.open();
+  assert.equal(env.$("ext-api-status").hidden, false);
+  assert.equal(env.$("ext-api-status").textContent, "Extension API 0.3.35");
+  assert.equal(env.$("ext-sdk-warning").hidden, true);
+  assert.equal(env.$("ext-install-button").disabled, false);
+  assert.equal(env.$("ext-catalog-list").querySelector("button[data-ext-action]").disabled, false);
+
+  // Without an SDK beside the engine, Gufo cannot build a module: say so and block the buttons.
+  info = { available: true, api_version: "0.3.35", sdk: { present: false, build_id: "" }, extensions: [] };
+  dialog.syncServerState();
+  assert.equal(env.$("ext-sdk-warning").hidden, false);
+  assert.equal(env.$("ext-install-button").disabled, true);
+  assert.equal(env.$("ext-update-all").disabled, true);
+  assert.equal(env.$("ext-catalog-list").querySelector("button[data-ext-action]").disabled, true);
+});

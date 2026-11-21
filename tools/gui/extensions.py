@@ -58,7 +58,8 @@ def _read_json(path):
         return None
 
 
-def _locate_sdk_build_id(executable):
+def _locate_sdk(executable):
+    """Find the extension SDK the way Gufo does: override, installed prefix, then beside gufo."""
     candidates = []
     override = os.environ.get("GUFO_SDK_DIR", "").strip()
     if override:
@@ -69,8 +70,8 @@ def _locate_sdk_build_id(executable):
     for candidate in candidates:
         sdk = _read_json(candidate / "sdk.json")
         if sdk and isinstance(sdk.get("build_id"), str) and sdk["build_id"]:
-            return sdk["build_id"]
-    return ""
+            return {"present": True, "build_id": sdk["build_id"]}
+    return {"present": False, "build_id": ""}
 
 
 def _option_applies_to_serve(option):
@@ -200,10 +201,11 @@ def _empty_result(executable, error=""):
         "providers": [],
         "options": [],
         "draft_options": {},
+        "sdk": {"present": False, "build_id": ""},
     }
 
 
-def _merge_discovery(executable, diagnose, help_options, store_data):
+def _merge_discovery(executable, diagnose, help_options, store_data, sdk=None):
     installed_map = store_data["installed"]
     manifests = store_data["manifests"]
 
@@ -357,6 +359,7 @@ def _merge_discovery(executable, diagnose, help_options, store_data):
         "providers": providers_out,
         "options": options_out,
         "draft_options": active_draft_options,
+        "sdk": sdk or {"present": False, "build_id": ""},
     }
 
 
@@ -405,9 +408,9 @@ def inspect_executable(executable, *, refresh=False, store_dir=None):
                         help_options = parse_provider_options_help(help_proc.stdout)
                 except (OSError, subprocess.SubprocessError):
                     pass
-                build_id = _locate_sdk_build_id(exe_path)
-                store_data = read_local_store(resolved_store, build_id=build_id)
-                result = _merge_discovery(exe_path, diagnose, help_options, store_data)
+                sdk = _locate_sdk(exe_path)
+                store_data = read_local_store(resolved_store, build_id=sdk["build_id"])
+                result = _merge_discovery(exe_path, diagnose, help_options, store_data, sdk=sdk)
 
     with _CACHE_LOCK:
         if len(_CACHE) >= _CACHE_LIMIT:

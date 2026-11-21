@@ -160,6 +160,7 @@ class ExtensionsTest(unittest.TestCase):
                 info = extensions.inspect_executable(str(exe), store_dir=store)
                 self.assertTrue(info["available"])
                 self.assertEqual(info["api_version"], "0.3.29")
+                self.assertEqual(info["sdk"], {"present": True, "build_id": "build-123"})
                 exts = {item["name"]: item for item in info["extensions"]}
                 self.assertEqual(exts["hy4flash"]["status"], "ready")
                 self.assertTrue(exts["hy4flash"]["installed"])
@@ -182,6 +183,7 @@ class ExtensionsTest(unittest.TestCase):
         missing = extensions.inspect_executable(str(Path(tempfile.gettempdir()) / "nonexistent-gufo-binary"))
         self.assertFalse(missing["available"])
         self.assertEqual(missing["options"], [])
+        self.assertEqual(missing["sdk"], {"present": False, "build_id": ""})
         with tempfile.TemporaryDirectory() as directory:
             exe = Path(directory) / "gufo.exe"
             exe.touch()
@@ -189,6 +191,18 @@ class ExtensionsTest(unittest.TestCase):
                 failed = extensions.inspect_executable(str(exe), store_dir=Path(directory) / "store")
             self.assertFalse(failed["available"])
             self.assertIn("Could not inspect", failed["error"])
+
+    def test_inspect_executable_reports_a_build_without_an_extension_sdk(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            exe = root / ("gufo.exe" if os.name == "nt" else "gufo")
+            exe.write_bytes(b"binary")
+            with patch("extensions.subprocess.run") as mocked:
+                mocked.return_value = subprocess.CompletedProcess([], 0, stdout=json.dumps(HY4_DIAGNOSE), stderr="")
+                with patch.dict(os.environ, {"GUFO_SDK_DIR": ""}):
+                    info = extensions.inspect_executable(str(exe), store_dir=root / "store", refresh=True)
+            self.assertTrue(info["available"])
+            self.assertEqual(info["sdk"], {"present": False, "build_id": ""})
 
     def test_provider_options_validation_and_preset_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:

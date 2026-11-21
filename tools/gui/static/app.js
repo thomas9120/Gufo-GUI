@@ -11,7 +11,7 @@ initLanguage();
 
 let form, presets, extensionsDialog, busy = false, closed = false;
 let previewTimer, previewVersion = 0, copiedTimer;
-let extensionsTimer, extensionsVersion = 0, inspectedExecutable = null;
+let extensionsTimer, extensionsVersion = 0, inspectedExecutable = null, extensionInfo = null;
 const runtime = createRuntime(updateControls);
 
 function updateControls() {
@@ -44,6 +44,7 @@ async function inspectExtensions(executable, refresh = false) {
     const info = await api("extensions", { executable, refresh });
     if (version !== extensionsVersion || !form) return;
     inspectedExecutable = executable;
+    extensionInfo = info;
     form.setExtensions(info);
     updateControls();
     const pv = ++previewVersion;
@@ -118,13 +119,16 @@ updateControls();
   try {
     const result = await api("settings");
     inspectedExecutable = result.settings.executable;
+    extensionInfo = result.extensions;
     form = createSettingsForm(result.settings, result.families, result.modes, edited, result.extensions);
     presets = createPresets(result, form, action, edited);
     extensionsDialog = createExtensionsDialog({
       getExecutable: () => form.values().executable,
+      getExtensionInfo: () => extensionInfo,
       isServerActive: () => runtime.state.pid != null || ["loading", "ready", "stopping"].includes(runtime.state.state),
       onExtensionsUpdated: (info) => {
         inspectedExecutable = form.values().executable;
+        extensionInfo = info;
         form.setExtensions(info);
         edited();
       },
