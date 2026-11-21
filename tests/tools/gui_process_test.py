@@ -157,7 +157,7 @@ class ProcessTest(unittest.TestCase):
                             or expected_live is None and rate is None
                             or expected_live == 0 and rate == 0):
                         break
-                time.sleep(0.05)
+                time.sleep(0.01)
             else:
                 self.fail(f"Expected speed {expected_speed}, got {metrics}")
             seen_at = time.monotonic()
@@ -171,8 +171,10 @@ class ProcessTest(unittest.TestCase):
                     self.assertAlmostEqual(metrics["live_prefill_tps"], metrics["live_generation_tps"])
                     self.assertGreater(metrics["live_generation_tps"], 0)
                     self.assertLess(metrics["live_generation_tps"], 40)
+                    # Snapshot observation lags behind _watch's sampled_at by
+                    # fetch_props latency and OS timer granularity.
                     self.assertAlmostEqual(metrics["live_generation_tps"],
-                                           20 / (seen_at - previous_seen_at), delta=1)
+                                           20 / (seen_at - previous_seen_at), delta=4)
                 else:
                     self.assertEqual(metrics["live_prefill_tps"], expected_live)
             previous_seen_at = seen_at if metrics is not None else None
