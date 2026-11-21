@@ -23,7 +23,13 @@ Older presets retain unlimited thinking until a budget is explicitly saved.
    to the engine. An incompatible projector can fail during model loading.
 4. Check the executable. New presets default to the official checkout's
    `build/windows-release/gufo.exe`. Saved selections are preserved.
-   Keep the executable beside its runtime libraries.
+   Keep the executable beside its runtime libraries. The launcher inspects
+   the selected executable locally for loaded Gufo extensions and surfaces
+   any extension-declared `serve` options (such as a community extension's
+   drafter path or integer flags) under **Extension options**, saved per preset.
+   Use **Manage…** while the server is stopped to browse the extension registry
+   or install, update, and remove modules (Git URLs must be pinned to a commit
+   or tag and require explicit trust confirmation).
 5. Adjust settings, Save preset (or Save as for a new name), then Start Gufo.
    Wait for Ready before connecting your API client.
 

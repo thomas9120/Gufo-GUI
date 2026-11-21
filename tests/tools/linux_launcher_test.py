@@ -193,7 +193,7 @@ reject '*prerequisites are missing (ROCm*setup-linux.sh*' run_linux_update
         source = str(self.root / "official & engine")
         self.assertEqual(calls, [[source, "--preset", "release", "-DCMAKE_MAKE_PROGRAM=/tools/ninja",
                                   "-DGUFO_ENABLE_WARNINGS=OFF", f"-DCMAKE_PREFIX_PATH={rocm}", "-DXRT_DIR=/test/xrt",
-                                  f"-DCMAKE_HIP_COMPILER={compiler}"],
+                                  "-DGUFO_EXTENSION_DIRS=", f"-DCMAKE_HIP_COMPILER={compiler}"],
                                  [source, "--build", "--preset", "release", "--target", "gufo", "--parallel", "3"]])
         log.unlink()
         self.run_bash(body + "export TEST_FAIL=7\nreject '*build failed (exit 7)*' build_gufo\n")
@@ -218,6 +218,26 @@ reject '*prerequisites are missing (ROCm*setup-linux.sh*' run_linux_update
                                         capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 5)
                 self.assertIn(message, result.stdout)
+
+    def test_extension_dirs_and_post_update_extension_rebuild(self):
+        ext_dir = self.root / "hy4-ext"
+        ext_dir.mkdir()
+        self.run_bash(r'''
+events=()
+setup_command() { events+=("$*"); }
+python_bin=$(command -v python3)
+git_bin=/tools/git cmake_bin=/tools/cmake ninja_bin=/tools/ninja rocm_path=/opt/rocm
+export GUFO_EXTENSIONS_DIR="$root/ext-store"
+update_installed_extensions
+(( ${#events[@]} == 0 )) || fail "Ran update without installed.json: ${events[*]}"
+mkdir -p "$GUFO_EXTENSIONS_DIR"
+printf '{"schema":1,"extensions":[{"name":"hy4flash","version":"0.1.0"}]}\n' >"$GUFO_EXTENSIONS_DIR/installed.json"
+update_installed_extensions
+(( ${#events[@]} == 1 )) || fail "Expected 1 update call, got ${#events[@]}"
+[[ ${events[0]} == *"$engine extension update" ]] || fail "Unexpected update call: ${events[0]}"
+parse_setup_args --extension-dir "$root/hy4-ext"
+(( ${#extension_dirs[@]} == 1 )) && [[ ${extension_dirs[0]} == "$root/hy4-ext" ]] || fail "Extension dir not parsed"
+''')
 
 
 if __name__ == "__main__":

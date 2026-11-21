@@ -30,7 +30,8 @@ The green, amber, and cream theme follows the older installer.
 - **Install:** inspect hardware/tools, review missing packages and paths, clone
   official `gufo-org/gufo` main if absent, build, verify GPU startup, prepare GUI.
 - **Update engine:** validate the official clean main checkout and prerequisites,
-  review, fast-forward main, rebuild, and verify. Forks and dirty checkouts stop
+  review, fast-forward main, rebuild, verify, and run `gufo extension update`
+  when installed extension modules are present. Forks and dirty checkouts stop
   the operation; they are never converted or reset.
 - **Repair:** rerun setup against the existing revision, reusing downloads and
   build outputs. Missing GUI environments are recreated. It does not pull source
@@ -40,8 +41,10 @@ The green, amber, and cream theme follows the older installer.
   GUI origin is required. After review, the TUI closes and external Git performs
   a fast-forward update. Run Setup again to load updated dependencies and code.
   Source archives and development branches must be updated manually.
-- **Settings / logs:** customize engine and tool paths and build jobs; read the
-  tail of the most recent installer log. Full logs live in `build/installer-logs`.
+- **Settings / logs:** customize engine, tool, and optional compiled-in
+  extension source paths (`--extension-dir` / `-DGUFO_EXTENSION_DIRS`) and build
+  jobs; read the tail of the most recent installer log. Full logs live in
+  `build/installer-logs`.
 
 Linux authenticates sudo in the terminal before package installation, then uses
 `sudo -n` in the worker so a hidden password prompt cannot hang the TUI. If sudo

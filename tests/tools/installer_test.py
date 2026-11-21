@@ -32,9 +32,17 @@ class InstallerTest(unittest.TestCase):
             self.assertIn("-CheckOnly" if windows else "--check-only", plan)
             self.assertIn("plan & space.json", plan)
             self.assertNotIn("-Yes", plan)
-        for options in (Options(jobs=0), Options(jobs=65), Options(gufo_path=str(ROOT)), Options(rocm="bad\npath")):
+        for options in (Options(jobs=0), Options(jobs=65), Options(gufo_path=str(ROOT)), Options(rocm="bad\npath"),
+                        Options(extension_dirs=["bad;path"]), Options(extension_dirs=["bad\npath"])):
             with self.assertRaises(ValueError):
                 options.validate()
+        ext_options = Options(extension_dirs=[str(ROOT / "ext1"), str(ROOT / "ext 2")])
+        win_cmd = Installer(windows=True).command("install", ext_options)
+        self.assertIn("-ExtensionDirs", win_cmd)
+        self.assertEqual(win_cmd[win_cmd.index("-ExtensionDirs") + 1], f"{ROOT / 'ext1'};{ROOT / 'ext 2'}")
+        linux_cmd = Installer(windows=False).command("update", ext_options)
+        self.assertEqual(linux_cmd.count("--extension-dir"), 2)
+        self.assertIn(str(ROOT / "ext 2"), linux_cmd)
 
     def test_options_and_setup_state_do_not_touch_presets(self):
         with tempfile.TemporaryDirectory() as directory:

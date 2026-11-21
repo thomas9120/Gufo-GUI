@@ -67,6 +67,20 @@
           <label for="executable" data-i18n="Gufo executable">Gufo executable</label>
           <div class="path-row"><input id="executable" name="executable" type="text" spellcheck="false" placeholder="…\build\release\gufo.exe"><button type="button" data-browse="executable" data-kind="executable" aria-label="Choose Gufo executable" data-i18n="Choose" data-i18n-aria-label="Choose Gufo executable">Choose</button></div>
           <p class="hint" data-i18n="Select the built executable alongside its runtime libraries.">Select the built executable alongside its runtime libraries.</p>
+          <div class="extensions-bar">
+            <span id="extensions-summary" class="hint" data-i18n="Extensions: —">Extensions: —</span>
+            <div class="extensions-actions">
+              <button type="button" id="refresh-extensions" class="quiet" data-i18n="Refresh">Refresh</button>
+              <button type="button" id="manage-extensions" class="quiet" data-i18n="Manage…">Manage…</button>
+            </div>
+          </div>
+          <p id="extensions-warning" class="hint extensions-warning" hidden></p>
+          <div id="extension-options-section" hidden>
+            <div class="divider"></div>
+            <div class="section-subtitle"><span class="i18n-text" data-i18n="Extension options">Extension options</span></div>
+            <p class="hint" data-i18n="Options declared by loaded Gufo extensions for this executable. Leave blank to use each extension's default.">Options declared by loaded Gufo extensions for this executable. Leave blank to use each extension's default.</p>
+            <div id="extension-options-list"></div>
+          </div>
         </section>
         <div class="right-column">
           <section class="card" aria-labelledby="run-heading">
@@ -156,6 +170,7 @@
   </main>
   {% include "preset-dialogs.html" %}
   {% include "busy-dialog.html" %}
+  {% include "extensions-dialog.html" %}
   <dialog id="file-dialog" aria-labelledby="picker-title">
     <div class="dialog-heading"><h2 id="picker-title" data-i18n="Choose a file">Choose a file</h2><button type="button" id="close-picker" class="quiet" aria-label="Close file picker" data-i18n-aria-label="Close file picker">✕</button></div>
     <div id="picker-roots" class="roots"></div>

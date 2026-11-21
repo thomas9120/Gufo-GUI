@@ -5,12 +5,26 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 
 from models import MODEL_FAMILIES, REASONING_LEVELS, SPECULATIVE_MODES, validate_model_settings
 
 
 ROOT = Path(__file__).resolve().parents[2]
 PATH_FIELDS = ("executable", "models_dir", "model", "mtp_model", "dflash_model", "dspark_model", "mmproj", "cache_disk_dir")
+PROVIDER_OPTION_NAME = re.compile(r"^--[a-z0-9][a-z0-9-]*$")
+MAX_PROVIDER_OPTIONS = 64
+CORE_CLI_FLAGS = frozenset({
+    "-h", "--help", "--host", "--port", "--sessions", "--model", "-m",
+    "--context", "--max-tokens", "--think", "--served-model-name",
+    "--temperature", "--top-k", "--top-p", "--min-p", "--seed",
+    "--repeat-penalty", "--repeat-last-n", "--frequency-penalty",
+    "--presence-penalty", "--reasoning-budget", "--reasoning-effort",
+    "--preserve-thinking", "--cache-ram-bytes", "--cache-disk",
+    "--cache-disk-bytes", "--cache-disk-staging-bytes", "--mmproj",
+    "--speculative", "--mtp-model", "--dspark-model", "--dflash-model",
+    "--draft-tokens", "--min-draft-tokens", "--draft-policy",
+})
 
 
 def default_executable():
@@ -70,6 +84,7 @@ DEFAULTS = {
     "frequency_penalty": 0.0,
     "presence_penalty": 0.0,
     "speculative": "off",
+    "provider_options": {},
 }
 INTEGER_LIMITS = {
     "context": (0, 2**32 - 1), "max_tokens": (-1, 2**32 - 1),
@@ -98,6 +113,40 @@ def settings_path():
     return base / "Gufo" / "launcher.json"
 
 
+def validate_provider_options(raw):
+    if not isinstance(raw, dict):
+        raise ValueError("provider_options: expected a map of extension options.")
+    if len(raw) > MAX_PROVIDER_OPTIONS:
+        raise ValueError(f"provider_options: keep at most {MAX_PROVIDER_OPTIONS} extension options.")
+    normalized = {}
+    for flag in sorted(raw):
+        if not isinstance(flag, str) or not PROVIDER_OPTION_NAME.match(flag):
+            raise ValueError(f"provider_options: invalid option name {flag!r}.")
+        if flag in CORE_CLI_FLAGS:
+            raise ValueError(f"{flag}: managed by the main launcher settings.")
+        value = raw[flag]
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            if value:
+                normalized[flag] = True
+        elif isinstance(value, int):
+            normalized[flag] = value
+        elif isinstance(value, float):
+            if not math.isfinite(value):
+                raise ValueError(f"{flag}: enter a finite number.")
+            normalized[flag] = value
+        elif isinstance(value, str):
+            if any(ord(c) < 32 for c in value):
+                raise ValueError(f"{flag}: enter a single line of text.")
+            stripped = value.strip()
+            if stripped:
+                normalized[flag] = stripped
+        else:
+            raise ValueError(f"{flag}: enter a valid value.")
+    return normalized
+
+
 def validate_settings(values):
     if not isinstance(values, dict) or set(values) - DEFAULTS.keys() - LEGACY_FIELDS:
         raise ValueError("Settings must contain only the supported launcher fields.")
@@ -116,7 +165,10 @@ def validate_settings(values):
     if type(values.get("preserve_thinking")) is bool:
         values = values | {"preserve_thinking": "on" if values["preserve_thinking"] else "off"}
     result = DEFAULTS | values
+    result["provider_options"] = validate_provider_options(result["provider_options"])
     for key, default in DEFAULTS.items():
+        if key == "provider_options":
+            continue
         value = result[key]
         if isinstance(default, str):
             if not isinstance(value, str) or any(ord(c) < 32 for c in value):

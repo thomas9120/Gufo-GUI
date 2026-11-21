@@ -4,7 +4,7 @@ import { $, api } from "./api.js";
 export function initFilePicker(homeFolder) {
   let pickerTarget, pickerKind, listing, browseVersion = 0;
 
-  async function browse(path) {
+  async function browse(path, fallback = "") {
     const version = ++browseVersion;
     text($("picker-error"), "");
     text($("picker-entries"), "Loading folder…");
@@ -25,6 +25,7 @@ export function initFilePicker(homeFolder) {
       renderFiles();
     } catch (error) {
       if (version !== browseVersion) return;
+      if (fallback && fallback !== path) return browse(fallback);
       listing = null;
       text($("picker-entries"), "");
       text($("picker-error"), error.message);
@@ -32,8 +33,10 @@ export function initFilePicker(homeFolder) {
   }
 
   function choose(path) {
-    $(pickerTarget).value = path;
-    $(pickerTarget).dispatchEvent(new Event("change", { bubbles: true }));
+    const target = $(pickerTarget);
+    if (!target) return $("file-dialog").close();
+    target.value = path;
+    target.dispatchEvent(new Event("change", { bubbles: true }));
     $("file-dialog").close();
   }
 
@@ -44,7 +47,7 @@ export function initFilePicker(homeFolder) {
     $("picker-entries").replaceChildren(...entries.map((entry) => {
       const button = document.createElement("button"); button.type = "button";
       const icon = document.createElement("span"); icon.className = "file-icon";
-      text(icon, entry.directory ? "DIR" : pickerKind === "gguf" ? "GGUF" : "EXE");
+      text(icon, entry.directory ? "DIR" : pickerKind === "gguf" ? "GGUF" : pickerKind === "executable" ? "EXE" : "FILE");
       const name = document.createElement("span"); name.textContent = entry.name;
       button.append(icon, name);
       if (!entry.directory && entry.shards > 1) {
@@ -57,22 +60,34 @@ export function initFilePicker(homeFolder) {
     if (!entries.length) text($("picker-entries"), "No matching files or folders.");
   }
 
-  document.querySelectorAll("[data-browse]").forEach((button) => button.addEventListener("click", () => {
+  document.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-browse]");
+    if (!button) return;
     pickerTarget = button.dataset.browse; pickerKind = button.dataset.kind;
-    text($("picker-title"), button.getAttribute("data-i18n-aria-label") || button.getAttribute("aria-label") || (pickerKind === "folder" ? "Choose a folder" : "Choose a file"));
-    $("select-folder").hidden = pickerKind !== "folder";
+    const defaultTitle = pickerKind === "folder" ? "Choose a folder"
+      : pickerKind === "path" ? "Choose a file or folder" : "Choose a file";
+    text($("picker-title"), button.getAttribute("data-i18n-aria-label") || button.getAttribute("aria-label") || defaultTitle);
+    $("select-folder").hidden = pickerKind !== "folder" && pickerKind !== "path";
     $("picker-roots").replaceChildren();
     const homeButton = document.createElement("button");
     homeButton.type = "button"; text(homeButton, "Home");
     homeButton.addEventListener("click", () => browse(homeFolder));
     $("picker-roots").append(homeButton);
     $("file-dialog").showModal();
-    const current = $(pickerTarget).value;
+    const current = $(pickerTarget)?.value || "";
     let parent = current.replace(/[\\/][^\\/]*$/, "");
     if (/^[a-z]:$/i.test(parent)) parent += "\\";
-    const path = pickerKind === "folder" ? current : current && parent !== current ? parent : $("models_dir").value;
-    browse(path);
-  }));
+    const modelsDir = $("models_dir").value;
+    if (pickerKind === "folder") {
+      browse(current || modelsDir);
+    } else if (pickerKind === "path") {
+      const fallback = current && parent !== current ? parent : modelsDir;
+      browse(current || modelsDir, fallback);
+    } else {
+      const path = current && parent !== current ? parent : modelsDir;
+      browse(path);
+    }
+  });
   $("close-picker").addEventListener("click", () => $("file-dialog").close());
   $("file-dialog").addEventListener("close", () => { ++browseVersion; });
   $("picker-filter").addEventListener("input", renderFiles);

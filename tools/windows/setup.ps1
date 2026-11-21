@@ -4,6 +4,7 @@ param(
   [string]$GufoPath = "",
   [string]$Rocm = "",
   [string]$Vcpkg = "",
+  [string]$ExtensionDirs = "",
   [switch]$CheckOnly,
   [string]$PlanJson = "",
   [switch]$Yes,
@@ -387,6 +388,33 @@ function Write-SetupPlan($Tools, [object[]]$Missing, [string]$Path) {
   [IO.File]::WriteAllText($Path, ($plan | ConvertTo-Json -Depth 5))
 }
 
+function Update-InstalledExtensions([string]$Engine, $Tools) {
+  $extStore = if ($env:GUFO_EXTENSIONS_DIR) { $env:GUFO_EXTENSIONS_DIR } else { Join-Path $env:LOCALAPPDATA "gufo\extensions" }
+  $installedPath = Join-Path $extStore "installed.json"
+  if (-not (Test-Path -LiteralPath $installedPath)) { return }
+  try {
+    $doc = Get-Content -LiteralPath $installedPath -Raw | ConvertFrom-Json
+  } catch { return }
+  if (-not $doc -or [int]$doc.schema -ne 1 -or -not $doc.extensions -or @($doc.extensions).Count -eq 0) { return }
+  $wrapper = Join-Path $PSScriptRoot "run-extension.cmd"
+  $vcvars = Join-Path $Tools.VS "VC\Auxiliary\Build\vcvars64.bat"
+  Write-Host "Updating installed Gufo extension modules ($(@($doc.extensions).Count))..." -ForegroundColor Cyan
+  if ((Test-Path -LiteralPath $wrapper) -and (Test-Path -LiteralPath $vcvars)) {
+    $env:HIP_PATH = $Tools.Rocm.Replace('\', '/')
+    $env:ROCM_PATH = $env:HIP_PATH
+    $env:HIP_DEVICE_LIB_PATH = "$env:HIP_PATH/lib/llvm/amdgcn/bitcode"
+    $env:VCPKG_ROOT = $Tools.Vcpkg.Replace('\', '/')
+    $env:XRT_DIR = $Tools.Xrt
+    $env:GUFO_VCVARS = $vcvars
+    $env:GUFO_EXE = $Engine
+    $vsInstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
+    $env:PATH = "$vsInstaller;$($Tools.Rocm)\bin;$($Tools.Rocm)\lib\llvm\bin;$env:PATH"
+    Invoke-SetupCommand "cmd.exe" @("/d", "/c", "call", $wrapper, "update")
+  } else {
+    Invoke-SetupCommand $Engine @("extension", "update")
+  }
+}
+
 function Invoke-WindowsSetup {
   Write-InstallerPhase "inspect"
   Assert-SetupMachine
@@ -444,13 +472,16 @@ function Invoke-WindowsSetup {
     Assert-EngineStopped
     Write-InstallerPhase "build"
     Write-Host "Building Gufo. The first build also compiles dependencies; this can take a while..." -ForegroundColor Cyan
-    Invoke-SetupCommand $shell ($options + @("$PSScriptRoot\build.ps1", "-GufoPath", $engineRoot, "-VisualStudio", $tools.VS, "-Python", $tools.Python, "-Jobs", "$Jobs", "-Rocm", $tools.Rocm, "-Vcpkg", $tools.Vcpkg, "-Ninja", $tools.Ninja))
+    $buildArgs = $options + @("$PSScriptRoot\build.ps1", "-GufoPath", $engineRoot, "-VisualStudio", $tools.VS, "-Python", $tools.Python, "-Jobs", "$Jobs", "-Rocm", $tools.Rocm, "-Vcpkg", $tools.Vcpkg, "-Ninja", $tools.Ninja)
+    if ($ExtensionDirs) { $buildArgs += @("-ExtensionDirs", $ExtensionDirs) }
+    Invoke-SetupCommand $shell $buildArgs
     $engine = Join-Path $engineRoot "build\windows-release\gufo.exe"
     Write-InstallerPhase "verify"
     Write-Host "Checking the built executable and GPU (no model is loaded)..." -ForegroundColor Cyan
     Invoke-SetupCommand $engine @("--version")
     # Run outside the build script's compiler environment, just as the GUI will.
     Invoke-SetupCommand $engine @("diagnose", "--section", "gpu")
+    Update-InstalledExtensions $engine $tools
     Write-InstallerPhase "gui"
     Invoke-SetupCommand $shell ($options + @("$PSScriptRoot\gui.ps1", "-Python", $tools.Python, "-PrepareOnly"))
     Write-InstallerPhase "complete"

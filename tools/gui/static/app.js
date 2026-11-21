@@ -5,11 +5,13 @@ import { createPresets } from "./presets.js";
 import { initFilePicker } from "./file-picker.js";
 import { createRuntime } from "./runtime.js";
 import { confirmBusyAction } from "./busy-actions.js";
+import { createExtensionsDialog } from "./extensions-dialog.js";
 
 initLanguage();
 
-let form, presets, busy = false, closed = false;
+let form, presets, extensionsDialog, busy = false, closed = false;
 let previewTimer, previewVersion = 0, copiedTimer;
+let extensionsTimer, extensionsVersion = 0, inspectedExecutable = null;
 const runtime = createRuntime(updateControls);
 
 function updateControls() {
@@ -20,6 +22,7 @@ function updateControls() {
   $("stop-button").disabled = busy || !active || state.state === "stopping" || closed;
   $("exit-button").disabled = busy || closed;
   presets?.render();
+  extensionsDialog?.syncServerState();
   const different = active && state.running && form && !sameSettings(form.values(), state.running.settings);
   text($("next-launch-note"), different
     ? "These settings differ from the running server. Changes apply to the next launch."
@@ -35,11 +38,33 @@ async function preview(version) {
   }
 }
 
+async function inspectExtensions(executable, refresh = false) {
+  const version = ++extensionsVersion;
+  try {
+    const info = await api("extensions", { executable, refresh });
+    if (version !== extensionsVersion || !form) return;
+    inspectedExecutable = executable;
+    form.setExtensions(info);
+    updateControls();
+    const pv = ++previewVersion;
+    preview(pv);
+  } catch (error) {
+    if (version === extensionsVersion && refresh) notice(error.message);
+  }
+}
+
 function edited() {
   updateControls();
   clearTimeout(previewTimer);
   const version = ++previewVersion;
   previewTimer = setTimeout(() => preview(version), 250);
+  if (form) {
+    const currentExe = form.values().executable;
+    if (inspectedExecutable !== null && currentExe !== inspectedExecutable) {
+      clearTimeout(extensionsTimer);
+      extensionsTimer = setTimeout(() => inspectExtensions(currentExe, false), 400);
+    }
+  }
 }
 
 async function action(callback) {
@@ -80,6 +105,10 @@ $("copy-url").addEventListener("click", () => action(async () => {
   clearTimeout(copiedTimer);
   copiedTimer = setTimeout(() => text($("copy-url"), "Copy"), 1500);
 }));
+$("refresh-extensions")?.addEventListener("click", () => {
+  if (!form || busy || closed) return;
+  inspectExtensions(form.values().executable, true);
+});
 window.addEventListener("beforeunload", (event) => {
   if (!closed && presets?.dirty()) { event.preventDefault(); event.returnValue = ""; }
 });
@@ -88,8 +117,18 @@ updateControls();
 (async () => {
   try {
     const result = await api("settings");
-    form = createSettingsForm(result.settings, result.families, result.modes, edited);
+    inspectedExecutable = result.settings.executable;
+    form = createSettingsForm(result.settings, result.families, result.modes, edited, result.extensions);
     presets = createPresets(result, form, action, edited);
+    extensionsDialog = createExtensionsDialog({
+      getExecutable: () => form.values().executable,
+      isServerActive: () => runtime.state.pid != null || ["loading", "ready", "stopping"].includes(runtime.state.state),
+      onExtensionsUpdated: (info) => {
+        inspectedExecutable = form.values().executable;
+        form.setExtensions(info);
+        edited();
+      },
+    });
     initFilePicker(result.home);
     text($("settings-location"), "Settings · {path}", { path: result.path });
     edited();

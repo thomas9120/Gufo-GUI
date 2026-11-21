@@ -139,6 +139,22 @@ $state = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
 Assert ($state.GufoPath -eq $engineRoot) 'Custom source path not saved'
 ''')
 
+    def test_update_rebuilds_installed_extensions_only_when_present(self):
+        self.run_ps(r'''
+$calls = [Collections.Generic.List[object]]::new()
+function Invoke-SetupCommand($File, $Arguments) { $calls.Add(@($File, ($Arguments -join '|'))) }
+$extStore = Join-Path $root 'ext-store'
+$env:GUFO_EXTENSIONS_DIR = $extStore
+$tools = [pscustomobject]@{VS='C:\vs'; Rocm='C:\rock'; Vcpkg='C:\vcpkg'; Xrt='C:\xrt'}
+Update-InstalledExtensions 'C:\gufo\gufo.exe' $tools
+Assert ($calls.Count -eq 0) 'Ran extension update without installed.json'
+New-Item -ItemType Directory -Path $extStore -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $extStore 'installed.json') -Value '{"schema":1,"extensions":[{"name":"hy4flash","version":"0.1.0"}]}'
+Update-InstalledExtensions 'C:\gufo\gufo.exe' $tools
+Assert ($calls.Count -eq 1) "Expected one extension update call, got $($calls.Count)"
+Assert ($calls[0][1] -like '*update*') "Unexpected update args: $($calls[0][1])"
+''')
+
     def test_update_fast_forwards_only_engine_and_stops_before_build_on_pull_failure(self):
         self.run_ps(f". {quote(ROOT / 'tools/windows/update.ps1')}\n" + r'''
 $root = Split-Path -Parent $PSCommandPath
@@ -193,7 +209,8 @@ Assert ($events.Count -eq 0) 'Build continued after failed pull'
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = [json.loads(line) for line in log.read_text().splitlines()]
         self.assertEqual(calls, [["--preset", "windows-release",
-                                 "-DCMAKE_MAKE_PROGRAM=" + environment["GUFO_NINJA"], "-DXRT_DIR=" + environment["XRT_DIR"], "-DGUFO_ENABLE_WARNINGS=OFF"],
+                                 "-DCMAKE_MAKE_PROGRAM=" + environment["GUFO_NINJA"], "-DXRT_DIR=" + environment["XRT_DIR"],
+                                 "-DGUFO_ENABLE_WARNINGS=OFF", "-DGUFO_EXTENSION_DIRS="],
                                 ["--build", "--preset", "windows-release", "--target", "gufo", "--parallel", "3"]])
         environment["TEST_FAIL"] = "7"
         self.assertEqual(run().returncode, 7)
@@ -316,6 +333,7 @@ Assert (-not (Test-Path -LiteralPath (Join-Path $vcpkgPath 'bootstrapped'))) 'Un
             "Assert ($LASTEXITCODE -eq 0) 'Build wrapper failed'\n")
         calls = [json.loads(line) for line in (source / "calls.jsonl").read_text().splitlines()]
         self.assertEqual(calls[0][:2], ["--preset", "windows-release"])
+        self.assertIn("-DGUFO_EXTENSION_DIRS=", calls[0])
         self.assertEqual(Path(patch_log.read_text()), self.root)
         self.assertNotIn('\\', patch_log.read_text())
         self.assertEqual((source / "build/windows-release/test.dll").read_bytes(), b"runtime")

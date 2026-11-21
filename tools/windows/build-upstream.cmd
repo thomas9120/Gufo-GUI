@@ -9,7 +9,7 @@ if errorlevel 1 exit /b %errorlevel%
 set "VCPKG_ROOT=%GUFO_SELECTED_VCPKG%"
 set "HIP_PATH=%GUFO_SELECTED_HIP%"
 rem Launcher installs do not need the upstream developer warning stream.
-call "%GUFO_CMAKE%" --preset windows-release "-DCMAKE_MAKE_PROGRAM=%GUFO_NINJA%" "-DXRT_DIR=%XRT_DIR%" -DGUFO_ENABLE_WARNINGS=OFF
+call "%GUFO_CMAKE%" --preset windows-release "-DCMAKE_MAKE_PROGRAM=%GUFO_NINJA%" "-DXRT_DIR=%XRT_DIR%" -DGUFO_ENABLE_WARNINGS=OFF "-DGUFO_EXTENSION_DIRS=%GUFO_EXTENSION_DIRS%"
 if errorlevel 1 exit /b %errorlevel%
 call "%GUFO_CMAKE%" --build --preset windows-release --target gufo --parallel %GUFO_BUILD_JOBS%
 if errorlevel 1 exit /b %errorlevel%
