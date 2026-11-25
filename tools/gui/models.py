@@ -22,6 +22,18 @@ MODEL_FAMILIES = {
         "defaults": {"think": "auto", "reasoning_effort": "auto"},
         "hint": "DSpark needs a matching DeepSeek V4 Flash support model. Text only; Gufo checks compatibility when loading.",
     },
+    "inkling_2_mini": {
+        "label": "Inkling 2 Mini",
+        "speculative": ("off", "dspark"),
+        "reasoning_effort": REASONING_LEVELS,
+        "defaults": {"think": "auto", "reasoning_effort": "auto", "context": 0,
+                     "served_model_name": "inkling-2-mini", "temperature": 1.0,
+                     "top_k": 0, "top_p": 1.0, "min_p": 0.0},
+        "hint": "Use Inkling-2-Mini-UD-Q4_K_XL.gguf. For DSpark, select dspark-Inkling-2-Mini-Q8_0.gguf.",
+        "projector_hint": "Select mmproj-BF16.gguf from Inkling 2 Mini to accept images.",
+        "thinking_off_label": "Lowest effort",
+        "thinking_hint": "Auto uses high effort. Inkling may still emit a short thought at the lowest effort. Clients can override the level per request.",
+    },
     "qwen38_flash_next": {
         "label": "Qwen3.8-Flash-Next",
         "speculative": ("off", "mtp"),

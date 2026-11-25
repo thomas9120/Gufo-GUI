@@ -16,11 +16,11 @@ Older presets retain unlimited thinking until a budget is explicitly saved.
 1. Choose a models folder and select a main GGUF. Browse subfolders or paste
    an absolute path. For split models, select the first shard.
 2. Choose a model family and speculative mode: Off, MTP for Flash-Next,
-   DFlash2 for Qwen3.8-27B, or DSpark for DeepSeek V4 Flash. Select the matching
-   sidecar, draft, or support model.
+   DFlash2 for Qwen3.8-27B, or DSpark for DeepSeek V4 Flash and Inkling 2 Mini.
+   Select the matching sidecar, draft, or support model.
    The family describes GUI choices; the engine checks actual compatibility.
-3. Optionally select a vision projector. A blank path leaves auto-discovery
-   to the engine. An incompatible projector can fail during model loading.
+3. Optionally select a vision projector. Gufo can auto-discover projectors
+   for some models. An incompatible projector can fail during model loading.
 4. Check the executable. New presets default to the official checkout's
    `build/windows-release/gufo.exe`. Saved selections are preserved.
    Keep the executable beside its runtime libraries. The launcher inspects
@@ -37,6 +37,14 @@ The GUI defaults to 32K context, one session, a 2,048-token output limit,
 temperature 1, top-p 0.95, top-k 20, and min-p 0. Choose settings appropriate
 for your model and available memory. Thinking and reasoning controls set
 server defaults; clients can override generation defaults per request.
+
+For **Inkling 2 Mini**, select `Inkling-2-Mini-UD-Q4_K_XL.gguf` as the main
+model and add `mmproj-BF16.gguf` to accept images. For DSpark, select
+`dspark-Inkling-2-Mini-Q8_0.gguf` in the support model field. **Use family
+defaults** sets the API name to `inkling-2-mini`, selects the native 1,048,576-token
+context (`0`), enables the model's default high thinking effort, and sets
+temperature 1, top-k 0, top-p 1, and min-p 0. **Lowest effort** can still
+produce a short thought. See [Gufo's Inkling 2 Mini guide](https://github.com/gufo-org/gufo/blob/main/docs/models/inkling-2-mini.md).
 
 The API defaults to `http://127.0.0.1:8080/v1` with model name `gufo`.
 The launcher listens only on localhost at port 8090. Changing the engine's

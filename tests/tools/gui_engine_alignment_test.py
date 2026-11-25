@@ -7,6 +7,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools/gui"))
 from command import build_command
+from models import MODEL_FAMILIES
 from presets import load_document, new_document, resolved_settings, save_document
 from settings import validate_settings
 
@@ -66,3 +67,33 @@ class EngineAlignmentTest(unittest.TestCase):
             for family in ("qwen38_flash_next", "qwen38_27b"):
                 with self.assertRaisesRegex(ValueError, "does not support"):
                     validate_settings(values | {"model_family": family})
+
+    def test_inkling_defaults_and_optional_components_map_to_gufo_arguments(self):
+        family = "inkling_2_mini"
+        values = {"model_family": family, **MODEL_FAMILIES[family]["defaults"]}
+        command = build_command(values)
+        expected = {"--context": "0", "--served-model-name": "inkling-2-mini", "--think": "auto",
+                    "--temperature": "1.0", "--top-k": "0", "--top-p": "1.0", "--min-p": "0.0",
+                    "--speculative": "off"}
+        for flag, value in expected.items():
+            self.assertEqual(command[command.index(flag) + 1], value)
+        for flag in ("--mmproj", "--dspark-model", "--reasoning-effort", "--model-family"):
+            self.assertNotIn(flag, command)
+
+        with tempfile.TemporaryDirectory(prefix="gufo inkling ") as directory:
+            root = Path(directory)
+            exe, model, projector, draft = (root / name for name in (
+                "gufo.exe", "Inkling-2-Mini-UD-Q4_K_XL.gguf", "mmproj-BF16.gguf",
+                "dspark-Inkling-2-Mini-Q8_0.gguf"))
+            exe.touch()
+            for gguf in (model, projector, draft):
+                gguf.write_bytes(b"GGUF")
+            configured = values | {"executable": str(exe), "model": str(model), "mmproj": str(projector),
+                                   "speculative": "dspark", "dspark_model": str(draft), "think": "off"}
+            command = build_command(configured, check_files=True)
+            for flag, value in {"--model": str(model), "--mmproj": str(projector), "--speculative": "dspark",
+                                "--dspark-model": str(draft), "--think": "off"}.items():
+                self.assertEqual(command[command.index(flag) + 1], value)
+        for mode in ("mtp", "dflash2"):
+            with self.assertRaisesRegex(ValueError, "Inkling 2 Mini does not support"):
+                validate_settings(values | {"speculative": mode})

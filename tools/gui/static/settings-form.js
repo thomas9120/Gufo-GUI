@@ -243,6 +243,9 @@ export function createSettingsForm(initial, families, modes, onEdit, initialExte
     $("cache_ram_gib").disabled = $("cache_ram_off").checked;
     $("disk-cache-options").disabled = !$("cache_disk").checked;
     text($("family-hint"), family.hint);
+    text($("mmproj-hint"), family.projector_hint || "Leave blank for Gufo to auto-detect a compatible projector.");
+    text($("think").querySelector('[value="off"]'), family.thinking_off_label || "Off");
+    text($("thinking-hint"), family.thinking_hint || "Auto uses the model default. Clients can override the level per request. The level is ignored while Thinking is Off.");
     $("family-defaults").hidden = !Object.keys(family.defaults).length;
     for (const key of ["model", "mtp_model", "dflash_model", "dspark_model", "mmproj"]) {
       $(key).title = $(key).value;

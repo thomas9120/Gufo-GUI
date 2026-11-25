@@ -487,6 +487,36 @@ test("DSpark, reasoning levels and RAM off survive form restoration", async (t) 
   assert.equal(form.values().speculative, "off");
 });
 
+test("Inkling 2 Mini offers its draft, projector guidance and opt-in defaults", async (t) => {
+  const env = await setup(t);
+  const { createSettingsForm } = await env.use("settings-form.js");
+  const { settings, families, modes } = env.initial;
+  const form = createSettingsForm({ ...settings, speculative: "mtp" }, families, modes, () => {});
+
+  edit(env, "model_family", "inkling_2_mini");
+  assert.equal(env.$("model_family").selectedOptions[0].textContent, "Inkling 2 Mini");
+  assert.deepEqual(Array.from(env.$("speculative").options, ({ value }) => value), ["off", "dspark"]);
+  assert.equal(form.values().speculative, "off");
+  assert.equal(form.values().context, settings.context);
+  assert.match(env.$("mmproj-hint").textContent, /mmproj-BF16\.gguf/);
+  assert.equal(env.$("think").querySelector('[value="off"]').textContent, "Lowest effort");
+
+  edit(env, "speculative", "dspark");
+  assert.equal(env.$("dspark_model").closest("[data-speculative-file]").hidden, false);
+  edit(env, "dspark_model", "C:/models/dspark-Inkling-2-Mini-Q8_0.gguf");
+  env.$("family-defaults").click();
+  const values = form.values();
+  for (const [key, value] of Object.entries(families.inkling_2_mini.defaults)) {
+    assert.equal(values[key], value, key);
+  }
+  assert.equal(values.speculative, "dspark");
+  assert.match(values.dspark_model, /dspark-Inkling-2-Mini/);
+
+  edit(env, "model_family", "generic");
+  assert.match(env.$("mmproj-hint").textContent, /auto-detect/);
+  assert.equal(env.$("think").querySelector('[value="off"]').textContent, "Off");
+});
+
 test("extension options render dynamically, track dirty state, clear draft options on model change, and preserve unknown saved flags", async (t) => {
   const env = await setup(t);
   const { createSettingsForm, sameSettings } = await env.use("settings-form.js");
