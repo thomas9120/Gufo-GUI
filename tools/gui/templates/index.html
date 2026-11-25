@@ -58,11 +58,11 @@
             <div class="path-row"><input id="dspark_model" name="dspark_model" type="text" spellcheck="false"><button type="button" data-browse="dspark_model" data-kind="gguf" aria-label="Choose DSpark support model" data-i18n="Choose" data-i18n-aria-label="Choose DSpark support model">Choose</button></div>
             <p id="dspark_model-filename" class="selected-file"></p>
           </div>
-          <p class="hint" data-i18n="Choose the mode for your main model and a matching draft file. Flash-Next uses MTP; Qwen3.8-27B uses DFlash2; DeepSeek V4 Flash uses DSpark.">Choose the mode for your main model and a matching draft file. Flash-Next uses MTP; Qwen3.8-27B uses DFlash2; DeepSeek V4 Flash uses DSpark.</p>
+          <p class="hint" data-i18n="Match the draft file to your main model.">Match the draft file to your main model.</p>
           <label for="mmproj"><span class="i18n-text" data-i18n="Vision projector">Vision projector</span> <span class="optional" data-i18n="optional">optional</span></label>
-          <div class="path-row"><input id="mmproj" name="mmproj" type="text" spellcheck="false" placeholder="Auto-detect" data-i18n-placeholder="Auto-detect"><button type="button" data-browse="mmproj" data-kind="gguf" aria-label="Choose vision projector" data-i18n="Choose" data-i18n-aria-label="Choose vision projector">Choose</button></div>
+          <div class="path-row"><input id="mmproj" name="mmproj" type="text" spellcheck="false" aria-describedby="mmproj-hint"><button type="button" data-browse="mmproj" data-kind="gguf" aria-label="Choose vision projector" data-i18n="Choose" data-i18n-aria-label="Choose vision projector">Choose</button></div>
           <p id="mmproj-filename" class="selected-file"></p>
-          <p class="hint" data-i18n="Leave blank for Gufo to auto-detect a compatible projector.">Leave blank for Gufo to auto-detect a compatible projector.</p>
+          <p id="mmproj-hint" class="hint"></p>
           <div class="divider"></div>
           <label for="executable" data-i18n="Gufo executable">Gufo executable</label>
           <div class="path-row"><input id="executable" name="executable" type="text" spellcheck="false" placeholder="…\build\release\gufo.exe"><button type="button" data-browse="executable" data-kind="executable" aria-label="Choose Gufo executable" data-i18n="Choose" data-i18n-aria-label="Choose Gufo executable">Choose</button></div>
@@ -96,7 +96,7 @@
               <div><label for="served_model_name" data-i18n="API model name">API model name</label><input id="served_model_name" name="served_model_name" type="text" required><p class="hint" data-i18n="Use this name in your chat client.">Use this name in your chat client.</p></div>
               <div><label for="cache_ram_gib" data-i18n="RAM cache size (GiB)">RAM cache size (GiB)</label><input id="cache_ram_gib" name="cache_ram_gib" type="number" min="0" max="65536" step="1" required><label class="check-label"><input id="cache_ram_off" name="cache_ram_off" type="checkbox"> <span data-i18n="Disable RAM continuation cache">Disable RAM continuation cache</span></label><p class="hint" data-i18n="0 sizes it automatically. Raise it if long chats keep reprocessing the whole prompt; Flash-Next at 262K needs about 16. Uses system RAM.">0 sizes it automatically. Raise it if long chats keep reprocessing the whole prompt; Flash-Next at 262K needs about 16. Uses system RAM.</p></div>
             </div>
-            <p id="thinking-hint" class="hint" data-i18n="Auto uses the model default. Clients can override the level per request. The level is ignored while Thinking is Off.">Auto uses the model default. Clients can override the level per request. The level is ignored while Thinking is Off.</p>
+            <p id="thinking-hint" class="hint"></p>
             <label for="preserve_thinking" data-i18n="Preserve reasoning in history">Preserve reasoning in history</label>
             <select id="preserve_thinking" name="preserve_thinking"><option value="auto" data-i18n="Model default">Model default</option><option value="on" data-i18n="On">On</option><option value="off" data-i18n="Off">Off</option></select>
             <p class="hint" data-i18n="Auto follows the model default. On keeps reasoning supplied by your client in later prompts. Independent of generating new thoughts. Chat Completions clients can override this per request.">Auto follows the model default. On keeps reasoning supplied by your client in later prompts. Independent of generating new thoughts. Chat Completions clients can override this per request.</p>
